@@ -13,6 +13,7 @@ import {
   Leaf,
   Shield,
   Tractor,
+  Warehouse,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/forum', label: 'Fórum', icon: MessagesSquare },
   { href: '/events', label: 'Eventos', icon: CalendarDays },
   { href: '/farms', label: 'Gestão de Fazendas', icon: Tractor },
+  { href: '/inventory', label: 'Controle de Estoque', icon: Warehouse },
   { href: '/profile', label: 'Perfil', icon: User },
   { href: '/notifications', label: 'Notificações', icon: Bell },
   { href: '/admin', label: 'Admin', icon: Shield },
