@@ -41,6 +41,7 @@ body {
     --sidebar-accent-foreground: 142 60% 35%;
     --sidebar-border: 40 20% 85%;
     --sidebar-ring: 142 60% 35%;
+    --font-family: 'Roboto', sans-serif;
   }
   .dark {
     --background: 142 10% 10%;
@@ -76,6 +77,10 @@ body {
     --sidebar-border: 142 10% 25%;
     --sidebar-ring: 142 60% 45%;
   }
+
+  .font-roboto { --font-family: 'Roboto', sans-serif; }
+  .font-inter { --font-family: 'Inter', sans-serif; }
+  .font-lato { --font-family: 'Lato', sans-serif; }
 }
 
 @layer base {
@@ -84,5 +89,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-family);
   }
 }
