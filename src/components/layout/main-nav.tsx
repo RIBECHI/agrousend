@@ -10,7 +10,8 @@ import {
   Bell,
   CalendarDays,
   MessagesSquare,
-  Leaf
+  Leaf,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/events', label: 'Eventos', icon: CalendarDays },
   { href: '/profile', label: 'Perfil', icon: User },
   { href: '/notifications', label: 'Notificações', icon: Bell },
+  { href: '/admin', label: 'Admin', icon: Shield },
 ];
 
 export function MainNav() {
