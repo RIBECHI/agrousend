@@ -31,16 +31,14 @@ export function MainNav() {
   return (
     <nav className="flex flex-col p-4 space-y-2">
       {navItems.map((item) => (
-        <Link href={item.href} key={item.href} passHref>
+        <Link href={item.href} key={item.href} passHref legacyBehavior>
           <Button
+            as="a"
             variant={pathname === item.href ? 'secondary' : 'ghost'}
             className="w-full justify-start rounded-full"
-            asChild
           >
-            <a>
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.label}
-            </a>
+            <item.icon className="mr-3 h-5 w-5" />
+            {item.label}
           </Button>
         </Link>
       ))}
