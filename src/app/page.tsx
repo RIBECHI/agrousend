@@ -118,6 +118,18 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
+      let mediaUrl;
+      let mediaType: 'image' | 'video' | undefined;
+
+      // 1. Upload media if it exists
+      if (mediaFile) {
+        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, mediaFile);
+        mediaUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      // 2. Prepare post data
       const postData: any = {
         author: {
           name: 'Usuário Anônimo',
@@ -131,13 +143,8 @@ export default function Home() {
         timestamp: new Date(),
       };
       
-      if (mediaFile) {
-        const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, mediaFile);
-        const mediaUrl = await getDownloadURL(uploadResult.ref);
-        
-        if (mediaType === 'image') {
+      if (mediaUrl && mediaType) {
+         if (mediaType === 'image') {
           postData.image = mediaUrl;
           postData.imageHint = 'new post';
         } else if (mediaType === 'video') {
@@ -145,14 +152,18 @@ export default function Home() {
         }
       }
 
+      // 3. Save post to Firestore
       await addDoc(collection(firestore, "posts"), postData);
-
+      
+      // 4. Reset form
       setPostContent('');
       removeMedia();
+
     } catch (error) {
         console.error("Erro ao publicar:", error);
         alert(`Ocorreu um erro ao publicar: ${error}`);
     } finally {
+        // 5. ALWAYS reset publishing state
         setIsPublishing(false);
     }
   };
@@ -301,5 +312,6 @@ export default function Home() {
       </div>
     </div>
   );
+}
 
     
