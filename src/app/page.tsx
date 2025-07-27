@@ -81,7 +81,7 @@ export default function Home() {
 
   const removeMedia = () => {
     if (mediaPreview) {
-      // URL.revokeObjectURL(mediaPreview.url); // Deixar o navegador gerenciar
+      // Deixar o navegador gerenciar a revogação do object URL
     }
     setMediaPreview(null);
     setMediaFile(null);
@@ -125,40 +125,34 @@ export default function Home() {
         removeMedia();
     } catch (error) {
         console.error("Error publishing post: ", error);
-        alert("Ocorreu um erro ao publicar. Verifique as regras de segurança do Firestore no Console do Firebase. Para desenvolvimento, permita a escrita pública em 'posts'.");
+        alert("Ocorreu um erro ao publicar. Verifique se as Regras de Segurança do Firestore e do Storage estão configuradas para permitir escrita pública durante o desenvolvimento.");
     }
   };
   
   const formatTimestamp = (timestamp: any) => {
-    if (!timestamp) return 'Agora';
+    if (!timestamp) return 'agora';
+  
+    let date: Date;
     if (timestamp instanceof Timestamp) {
-       const date = timestamp.toDate();
-       const now = new Date();
-       const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
-       
-       if (diffSeconds < 60) return `${diffSeconds}s`;
-       const diffMinutes = Math.round(diffSeconds / 60);
-       if (diffMinutes < 60) return `${diffMinutes}m`;
-       const diffHours = Math.round(diffMinutes / 60);
-       if (diffHours < 24) return `${diffHours}h`;
-       const diffDays = Math.round(diffHours / 24);
-       return `${diffDays}d`;
+      date = timestamp.toDate();
+    } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
+      // Lida com o formato de objeto que pode vir do Firestore antes de ser convertido
+      date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
+    } else {
+      // Fallback para caso o timestamp já seja um objeto Date ou um formato inesperado
+      return 'agora';
     }
-    // Fallback para o formato antigo, se houver
-    if (timestamp.seconds) {
-      const date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
-       const now = new Date();
-       const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
-       
-       if (diffSeconds < 60) return `${diffSeconds}s`;
-       const diffMinutes = Math.round(diffSeconds / 60);
-       if (diffMinutes < 60) return `${diffMinutes}m`;
-       const diffHours = Math.round(diffMinutes / 60);
-       if (diffHours < 24) return `${diffHours}h`;
-       const diffDays = Math.round(diffHours / 24);
-       return `${diffDays}d`;
-    }
-    return 'Agora';
+  
+    const now = new Date();
+    const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  
+    if (diffSeconds < 60) return `${diffSeconds}s`;
+    const diffMinutes = Math.round(diffSeconds / 60);
+    if (diffMinutes < 60) return `${diffMinutes}m`;
+    const diffHours = Math.round(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays}d`;
   }
 
 
