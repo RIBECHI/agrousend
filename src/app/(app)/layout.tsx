@@ -23,7 +23,7 @@ export default function AppLayout({
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex items-center gap-2">
@@ -32,6 +32,10 @@ export default function AppLayout({
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // Render nothing while redirecting
   }
 
   return (

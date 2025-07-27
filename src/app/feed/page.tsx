@@ -12,7 +12,6 @@ import { collection, addDoc, onSnapshot, query, orderBy, Timestamp, DocumentData
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
-import { User } from 'firebase/auth';
 
 interface Post {
   id: string;
@@ -40,8 +39,6 @@ export default function FeedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!user) return; // Don't fetch posts if not logged in
-
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
@@ -54,7 +51,7 @@ export default function FeedPage() {
     });
 
     return () => unsubscribePosts();
-  }, [user]); // Re-run when user object is available
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
