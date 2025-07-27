@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -54,7 +54,13 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [mapKey, setMapKey] = useState(Date.now()); // State for the map key
+  const [mapKey, setMapKey] = useState(Date.now());
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      setMapKey(Date.now());
+    }
+  }, [isDialogOpen]);
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -71,11 +77,6 @@ export default function FarmsPage() {
       setIsDialogOpen(false);
     }
   };
-
-  const handleOpenDialog = () => {
-    setMapKey(Date.now()); // Change the key every time the dialog opens
-    setIsDialogOpen(true);
-  }
   
   return (
     <div className="container mx-auto">
@@ -84,7 +85,7 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
           <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
-        <Button size="lg" onClick={handleOpenDialog}>
+        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
           <PlusCircle className="mr-2 h-5 w-5" />
           Adicionar Novo Talhão
         </Button>
