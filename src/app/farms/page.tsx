@@ -112,6 +112,13 @@ export default function FarmsPage() {
   const openDialogForEdit = (plot: Plot) => {
     setSelectedPlot({ ...plot });
     setDrawnLayer(plot.geometry);
+    if(plot.geometry) {
+        // Simple way to get center of geometry
+        const geoJson = L.geoJSON(plot.geometry);
+        const center = geoJson.getBounds().getCenter();
+        setMapCenter([center.lat, center.lng]);
+        setMapZoom(15);
+    }
     setIsViewOnly(false);
     setIsDialogOpen(true);
   };
@@ -119,6 +126,13 @@ export default function FarmsPage() {
   const openDialogForView = (plot: Plot) => {
     setSelectedPlot({ ...plot });
     setDrawnLayer(plot.geometry);
+    if(plot.geometry) {
+        // Simple way to get center of geometry
+        const geoJson = L.geoJSON(plot.geometry);
+        const center = geoJson.getBounds().getCenter();
+        setMapCenter([center.lat, center.lng]);
+        setMapZoom(15);
+    }
     setIsViewOnly(true);
     setIsDialogOpen(true);
   };
@@ -145,9 +159,9 @@ export default function FarmsPage() {
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-4xl" onInteractOutside={(e) => e.preventDefault()} onCloseAutoFocus={closeDialog}>
             <DialogHeader>
-              <DialogTitle>{isViewOnly ? 'Visualizar Talhão' : (selectedPlot?.id ? 'Editar Talhão' : 'Adicionar Novo Talhão')}</DialogTitle>
+              <DialogTitle>{isViewOnly ? 'Detalhes do Talhão' : (selectedPlot?.id ? 'Editar Talhão' : 'Adicionar Novo Talhão')}</DialogTitle>
               <DialogDescription>
-                {isViewOnly ? 'Visualize o perímetro do talhão no mapa.' : 'Preencha as informações do talhão e desenhe seu perímetro no mapa.'}
+                {isViewOnly ? 'Visualize os detalhes e o perímetro do talhão no mapa.' : 'Preencha as informações do talhão e desenhe seu perímetro no mapa.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid md:grid-cols-2 gap-8 py-4">
@@ -178,7 +192,7 @@ export default function FarmsPage() {
                         value={selectedPlot?.area || ''}
                         onChange={(e) => handlePlotChange('area', e.target.value)}
                         placeholder="Calculada pelo desenho no mapa"
-                        readOnly
+                        readOnly={isViewOnly || !!drawnLayer}
                       />
                   </div>
               </fieldset>
@@ -237,8 +251,8 @@ export default function FarmsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDialogForView(plot)} disabled={!plot.geometry}>
-                            Ver no Mapa
+                          <DropdownMenuItem onClick={() => openDialogForView(plot)}>
+                            Detalhes
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openDialogForEdit(plot)}>
                             Editar
