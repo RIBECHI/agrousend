@@ -8,7 +8,7 @@ import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, Image as ImageIcon } f
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef } from 'react';
 import { firestore, storage } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, Timestamp, DocumentData } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
@@ -92,29 +92,27 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
-      let imageUrl: string | undefined = undefined;
-
-      if (postMedia) {
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${postMedia.name}`);
-        const uploadResult = await uploadBytes(storageRef, postMedia);
-        imageUrl = await getDownloadURL(uploadResult.ref);
-      }
-      
-      const newPost = {
+      const newPostData: DocumentData = {
         author: {
           uid: user.uid,
           name: user.displayName || 'Usuário',
           avatar: user.photoURL || 'https://placehold.co/40x40.png',
         },
         content: postContent,
-        imageUrl: imageUrl,
         likes: 0,
         comments: 0,
         shares: 0,
         timestamp: new Date(),
       };
 
-      await addDoc(collection(firestore, "posts"), newPost);
+      if (postMedia) {
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${postMedia.name}`);
+        const uploadResult = await uploadBytes(storageRef, postMedia);
+        const imageUrl = await getDownloadURL(uploadResult.ref);
+        newPostData.imageUrl = imageUrl;
+      }
+      
+      await addDoc(collection(firestore, "posts"), newPostData);
 
       setPostContent('');
       removeMedia();
