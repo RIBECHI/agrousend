@@ -13,6 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { X } from 'lucide-react';
+import Link from 'next/link';
 
 interface Post {
   id: string;
@@ -156,46 +157,61 @@ export default function FeedPage() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={!user || isPublishing}>
-              <div className="flex gap-4">
-                <Avatar>
-                  <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
-                  <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="w-full">
-                  <Textarea 
-                    placeholder={user ? `No que você está pensando, ${user.displayName}?` : 'Faça login para publicar...'}
-                    className="mb-2 bg-secondary border-none"
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                  />
-
-                  {postMediaPreview && (
-                    <div className="relative mt-2">
-                      <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
-                      <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center mt-2">
-                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
-                      <ImageIcon className="h-5 w-5" />
+            {!user ? (
+               <div className="flex flex-col items-center justify-center text-center p-8 gap-4">
+                  <h3 className="text-xl font-semibold">Bem-vindo ao AgroUs!</h3>
+                  <p className="text-muted-foreground">Para ver o feed e interagir com a comunidade, você precisa se conectar.</p>
+                  <div className="flex gap-4 mt-2">
+                    <Button asChild>
+                      <Link href="/">Fazer Login</Link>
                     </Button>
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
-
-                    <Button onClick={handlePublish} disabled={isPublishing}>
-                      {isPublishing ? 'Publicando...' : 'Publicar'}
+                    <Button asChild variant="secondary">
+                       <Link href="/signup">Cadastre-se</Link>
                     </Button>
                   </div>
+               </div>
+            ) : (
+              <fieldset disabled={isPublishing}>
+                <div className="flex gap-4">
+                  <Avatar>
+                    <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
+                    <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="w-full">
+                    <Textarea 
+                      placeholder={`No que você está pensando, ${user.displayName}?`}
+                      className="mb-2 bg-secondary border-none"
+                      value={postContent}
+                      onChange={(e) => setPostContent(e.target.value)}
+                    />
+
+                    {postMediaPreview && (
+                      <div className="relative mt-2">
+                        <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
+                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center mt-2">
+                      <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
+                        <ImageIcon className="h-5 w-5" />
+                      </Button>
+                      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
+
+                      <Button onClick={handlePublish} disabled={isPublishing}>
+                        {isPublishing ? 'Publicando...' : 'Publicar'}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </fieldset>
+              </fieldset>
+            )}
           </CardContent>
         </Card>
         
-        {posts.map((post) => (
+        {user && posts.map((post) => (
           <Card key={post.id} className="overflow-hidden">
             <CardHeader className="flex flex-row items-center gap-4 p-4">
               <Avatar>
