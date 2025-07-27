@@ -13,6 +13,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { User } from 'firebase/auth';
 
 interface Post {
   id: string;
@@ -79,11 +80,7 @@ export default function Home() {
     }
   }
 
-  const handlePublish = async () => {
-    if (!user) {
-      alert("Você precisa estar logado para publicar.");
-      return;
-    }
+  const handlePublish = async (currentUser: User) => {
     if (!postContent.trim() && !postMedia) {
         alert("A publicação não pode estar vazia.");
         return;
@@ -92,11 +89,19 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
+      let imageUrl: string | undefined = undefined;
+      
+      if (postMedia) {
+        const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${postMedia.name}`);
+        const uploadResult = await uploadBytes(storageRef, postMedia);
+        imageUrl = await getDownloadURL(uploadResult.ref);
+      }
+      
       const newPostData: DocumentData = {
         author: {
-          uid: user.uid,
-          name: user.displayName || 'Usuário',
-          avatar: user.photoURL || 'https://placehold.co/40x40.png',
+          uid: currentUser.uid,
+          name: currentUser.displayName || 'Usuário Anônimo',
+          avatar: currentUser.photoURL || 'https://placehold.co/40x40.png',
         },
         content: postContent,
         likes: 0,
@@ -105,10 +110,7 @@ export default function Home() {
         timestamp: new Date(),
       };
 
-      if (postMedia) {
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${postMedia.name}`);
-        const uploadResult = await uploadBytes(storageRef, postMedia);
-        const imageUrl = await getDownloadURL(uploadResult.ref);
+      if (imageUrl) {
         newPostData.imageUrl = imageUrl;
       }
       
@@ -160,37 +162,39 @@ export default function Home() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={isPublishing} className="flex gap-4">
-              <Avatar>
-                <AvatarImage src={user.photoURL || 'https://placehold.co/40x40.png'} />
-                <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
-              </Avatar>
-              <div className="w-full">
-                <Textarea 
-                  placeholder="No que você está pensando, produtor?"
-                  className="mb-2 bg-secondary border-none"
-                  value={postContent}
-                  onChange={(e) => setPostContent(e.target.value)}
-                />
+            <fieldset disabled={isPublishing}>
+              <div className="flex gap-4">
+                <Avatar>
+                  <AvatarImage src={user.photoURL || 'https://placehold.co/40x40.png'} />
+                  <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                </Avatar>
+                <div className="w-full">
+                  <Textarea 
+                    placeholder="No que você está pensando, produtor?"
+                    className="mb-2 bg-secondary border-none"
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                  />
 
-                {postMediaPreview && (
-                  <div className="relative mt-2">
-                    <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
-                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
-                      <MoreHorizontal className="h-4 w-4" />
+                  {postMediaPreview && (
+                    <div className="relative mt-2">
+                      <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
+                      <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center mt-2">
+                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
+                      <ImageIcon className="h-5 w-5" />
+                    </Button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
+
+                    <Button onClick={() => handlePublish(user)} disabled={isPublishing}>
+                      {isPublishing ? 'Publicando...' : 'Publicar'}
                     </Button>
                   </div>
-                )}
-                
-                <div className="flex justify-between items-center mt-2">
-                  <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
-                    <ImageIcon className="h-5 w-5" />
-                  </Button>
-                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
-
-                  <Button onClick={handlePublish} disabled={isPublishing}>
-                    {isPublishing ? 'Publicando...' : 'Publicar'}
-                  </Button>
                 </div>
               </div>
             </fieldset>
