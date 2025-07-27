@@ -25,7 +25,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // On successful login, we will redirect. But there is no auto-redirect.
+      // On successful login, we will redirect.
       router.push('/feed');
     } catch (error: any) {
       toast({
