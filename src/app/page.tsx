@@ -22,9 +22,9 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { user, loading } = useAuth();
 
+  // Redireciona se o usuário já estiver logado.
+  // Isso evita que um usuário logado veja a tela de login.
   useEffect(() => {
-    // Se o usuário já estiver logado, redireciona para o feed.
-    // Isso evita que o usuário logado veja a tela de login novamente.
     if (!loading && user) {
       router.push('/feed');
     }
@@ -36,7 +36,9 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // On successful login, redirect to the feed.
+      // No sucesso do login, o hook de autenticação irá atualizar o estado 'user',
+      // e o useEffect acima fará o redirecionamento.
+      // Adicionamos um redirecionamento explícito aqui por segurança.
       router.push('/feed');
     } catch (error: any) {
       toast({
@@ -47,11 +49,12 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  // Enquanto verifica a autenticação, não mostra nada para evitar o "pulo" de tela
+  
+  // Enquanto carrega ou se o usuário já estiver logado, não renderiza nada para evitar piscar de tela.
   if (loading || user) {
-    return null;
+    return null; 
   }
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-secondary">
