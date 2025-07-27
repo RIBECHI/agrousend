@@ -30,7 +30,6 @@ interface Post {
   timestamp: any;
 }
 
-
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
@@ -40,9 +39,7 @@ export default function Home() {
   const [isPublishing, setIsPublishing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
-
   useEffect(() => {
-    // Listener for authentication state
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -52,33 +49,27 @@ export default function Home() {
           setUser(userCredential.user);
         } catch (error) {
           console.error("Error signing in anonymously:", error);
+          // Handle error appropriately, maybe show a toast
         }
       }
     });
 
-    // Listener for posts
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
-    const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
-      const postsData: Post[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        postsData.push({ 
-          id: doc.id,
-          ...data,
-          timestamp: data.timestamp,
-        } as Post);
-      });
+    const unsubscribePosts = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Post[];
       setPosts(postsData);
     }, (error) => {
-        console.error("Error fetching posts: ", error);
+      console.error("Error fetching posts: ", error);
     });
 
     return () => {
       unsubscribeAuth();
       unsubscribePosts();
-    }
+    };
   }, []);
-
 
   const handleMediaButtonClick = (accept: string) => {
     if (fileInputRef.current) {
@@ -110,27 +101,15 @@ export default function Home() {
 
   const handlePublish = async () => {
     if (!user) {
-        alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
-        return;
+      alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
+      return;
     }
-    if (!postContent && !mediaFile) return;
+    if (!postContent.trim() && !mediaFile) return;
 
     setIsPublishing(true);
 
     try {
-      let mediaUrl;
-      let mediaType: 'image' | 'video' | undefined;
-
-      // 1. Upload media if it exists
-      if (mediaFile) {
-        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, mediaFile);
-        mediaUrl = await getDownloadURL(uploadResult.ref);
-      }
-
-      // 2. Prepare post data
-      const postData: any = {
+      const newPost: any = {
         author: {
           name: 'Usuário Anônimo',
           avatar: 'https://placehold.co/40x40.png',
@@ -142,29 +121,30 @@ export default function Home() {
         shares: 0,
         timestamp: new Date(),
       };
-      
-      if (mediaUrl && mediaType) {
-         if (mediaType === 'image') {
-          postData.image = mediaUrl;
-          postData.imageHint = 'new post';
-        } else if (mediaType === 'video') {
-          postData.video = mediaUrl;
+
+      if (mediaFile) {
+        const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, mediaFile);
+        const mediaUrl = await getDownloadURL(uploadResult.ref);
+
+        if (mediaType === 'image') {
+          newPost.image = mediaUrl;
+          newPost.imageHint = 'new post';
+        } else {
+          newPost.video = mediaUrl;
         }
       }
 
-      // 3. Save post to Firestore
-      await addDoc(collection(firestore, "posts"), postData);
-      
-      // 4. Reset form
+      await addDoc(collection(firestore, "posts"), newPost);
+
       setPostContent('');
       removeMedia();
-
     } catch (error) {
-        console.error("Erro ao publicar:", error);
-        alert(`Ocorreu um erro ao publicar: ${error}`);
+      console.error("Erro ao publicar:", error);
+      alert(`Ocorreu um erro ao publicar: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
-        // 5. ALWAYS reset publishing state
-        setIsPublishing(false);
+      setIsPublishing(false);
     }
   };
   
@@ -192,7 +172,6 @@ export default function Home() {
     const diffDays = Math.round(diffHours / 24);
     return `${diffDays}d`;
   }
-
 
   return (
     <div className="container mx-auto max-w-2xl">
