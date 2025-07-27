@@ -150,7 +150,7 @@ export default function Home() {
       removeMedia();
     } catch (error) {
         console.error("Erro ao publicar:", error);
-        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes. A causa mais provável é a configuração das Regras de Segurança no Firebase.");
+        alert(`Ocorreu um erro ao publicar: ${error.message}. A causa mais provável é a configuração das Regras de Segurança no Firebase.`);
     } finally {
         setIsPublishing(false);
     }
@@ -306,5 +306,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
