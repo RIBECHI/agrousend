@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,15 +54,7 @@ export default function FeedPage() {
         return () => unsubscribe();
     }, [user]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
-        }
-    };
-
-    const removeImage = () => {
+    const removeImage = useCallback(() => {
         setImageFile(null);
         if (imagePreview) {
             URL.revokeObjectURL(imagePreview);
@@ -71,9 +63,19 @@ export default function FeedPage() {
         if(fileInputRef.current) {
             fileInputRef.current.value = '';
         }
-    }
+    }, [imagePreview]);
 
-    const handlePostSubmit = async () => {
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+
+    const handlePostSubmit = useCallback(async () => {
         if ((!newPost.trim() && !imageFile) || !user) return;
 
         setIsPosting(true);
@@ -101,7 +103,7 @@ export default function FeedPage() {
         } finally {
             setIsPosting(false);
         }
-    };
+    }, [newPost, imageFile, user, removeImage]);
 
     if (loading) {
         return (
