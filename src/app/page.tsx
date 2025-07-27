@@ -2,7 +2,7 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, ThumbsUp, Share2, MoreHorizontal } from 'lucide-react';
+import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 
 const posts = [
@@ -66,7 +66,15 @@ export default function Home() {
               </Avatar>
               <div className="w-full">
                 <Textarea placeholder="No que você está pensando, produtor?" className="mb-2 bg-secondary border-none" />
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
+                    <div className="flex gap-2">
+                        <Button variant="ghost" size="icon">
+                            <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                         <Button variant="ghost" size="icon">
+                            <Video className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                    </div>
                   <Button>Publicar</Button>
                 </div>
               </div>
