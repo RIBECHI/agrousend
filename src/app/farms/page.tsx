@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -10,8 +10,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MoreHorizontal, PlusCircle, Map } from 'lucide-react';
-import Image from 'next/image';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import dynamic from 'next/dynamic';
 
 const initialPlots = [
   {
@@ -49,6 +51,11 @@ export default function FarmsPage() {
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const MapContainer = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false }), []);
+  const TileLayer = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false }), []);
+  const FeatureGroup = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.FeatureGroup), { ssr: false }), []);
+  const EditControl = useMemo(() => dynamic(() => import('react-leaflet-draw').then(mod => mod.EditControl), { ssr: false }), []);
+
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
       setPlots([
@@ -63,6 +70,11 @@ export default function FarmsPage() {
       setNewPlot({ name: '', crop: '', area: '' });
       setIsDialogOpen(false);
     }
+  };
+  
+  const onCreated = (e: any) => {
+    const { layer } = e;
+    console.log('Polygon created:', layer.toGeoJSON());
   };
 
   return (
@@ -127,14 +139,30 @@ export default function FarmsPage() {
                     </div>
                 </div>
                  <div className="h-[400px] w-full bg-secondary rounded-lg">
-                    <Image 
-                        src="https://placehold.co/800x600.png" 
-                        alt="Mapa para desenhar talhão" 
-                        className="w-full h-full object-cover rounded-md"
-                        width={800}
-                        height={600}
-                        data-ai-hint="satellite farm map"
-                    />
+                    <MapContainer
+                        center={[-15.77972, -47.92972]}
+                        zoom={4}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                         <FeatureGroup>
+                            <EditControl
+                                position="topright"
+                                onCreated={onCreated}
+                                draw={{
+                                    rectangle: false,
+                                    polygon: true,
+                                    circle: false,
+                                    circlemarker: false,
+                                    marker: false,
+                                    polyline: false,
+                                }}
+                            />
+                        </FeatureGroup>
+                    </MapContainer>
                 </div>
             </div>
             <DialogFooter>
