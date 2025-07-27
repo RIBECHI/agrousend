@@ -25,7 +25,7 @@ export default function AppLayout({
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-background">
         <div className="flex items-center gap-2">
           <Leaf className="h-8 w-8 animate-spin text-primary" />
           <p className="text-lg">Carregando...</p>
