@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
@@ -22,7 +21,7 @@ export default function FeedPage() {
   // This case should be handled by the AppLayout, but as a fallback:
   if (!user) {
     return (
-        <div className="flex-1 flex items-center justify-center bg-secondary p-4">
+        <div className="flex-1 flex items-center justify-center bg-secondary p-4 h-full">
             <Card className="w-full max-w-md text-center">
                 <CardHeader>
                     <CardTitle>Bem-vindo ao AgroUs!</CardTitle>

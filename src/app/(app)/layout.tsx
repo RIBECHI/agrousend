@@ -26,11 +26,13 @@ export default function AppLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // If loading is finished and there's no user, redirect to login page.
     if (!loading && !user) {
       router.push('/');
     }
   }, [user, loading, router]);
 
+  // While loading, or if there's no user (before redirect kicks in), show a loading skeleton.
   if (loading || !user) {
     return (
        <div className="flex items-center justify-center h-screen">
@@ -45,6 +47,7 @@ export default function AppLayout({
     );
   }
 
+  // If user is authenticated, render the app layout.
   return (
     <SidebarProvider>
       <Sidebar>
