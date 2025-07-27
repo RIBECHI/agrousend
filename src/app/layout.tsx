@@ -29,33 +29,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          <SidebarProvider>
-            <div className="flex min-h-screen">
-              <Sidebar className="bg-card border-r">
-                <div className="flex h-full flex-col">
-                  <div className="flex h-16 items-center px-6">
-                    <Leaf className="h-8 w-8 text-primary" />
-                    <span className="ml-2 text-xl font-bold text-primary">AgroUs</span>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                      <MainNav />
-                  </div>
-                </div>
-              </Sidebar>
-              <SidebarInset className="flex-1 flex flex-col">
-                <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
-                   <div className="flex items-center gap-4">
-                    <SidebarTrigger className="md:hidden" />
-                    <h1 className="text-xl font-semibold">Feed</h1>
-                   </div>
-                  <UserNav />
-                </header>
-                <main className="flex-1 overflow-y-auto p-4 md:p-6">
-                  {children}
-                </main>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
+          {children}
         </AuthProvider>
         <Toaster />
       </body>
