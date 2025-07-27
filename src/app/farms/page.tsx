@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
@@ -78,13 +78,11 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
           <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
+        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-5 w-5" />
+          Adicionar Novo Talhão
+        </Button>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg">
-              <PlusCircle className="mr-2 h-5 w-5" />
-              Adicionar Novo Talhão
-            </Button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Talhão</DialogTitle>
