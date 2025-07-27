@@ -1,17 +1,20 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
-import { firestore } from '@/lib/firebase';
+import { firestore, storage } from '@/lib/firebase';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ImageIcon, X } from 'lucide-react';
+import Image from 'next/image';
 
 interface Post {
   id: string;
@@ -19,6 +22,7 @@ interface Post {
   authorName: string;
   authorPhotoURL: string | null;
   content: string;
+  imageUrl?: string;
   createdAt: Timestamp;
 }
 
@@ -27,10 +31,11 @@ export default function FeedPage() {
     const [newPost, setNewPost] = useState('');
     const [posts, setPosts] = useState<Post[]>([]);
     const [isPosting, setIsPosting] = useState(false);
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (!user) return;
-
         const postsCollection = collection(firestore, 'posts');
         const q = query(postsCollection, orderBy('createdAt', 'desc'));
 
@@ -43,24 +48,49 @@ export default function FeedPage() {
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, []);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const removeImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+        if(fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }
 
     const handlePostSubmit = async () => {
-        if (!newPost.trim() || !user) return;
+        if ((!newPost.trim() && !imageFile) || !user) return;
 
         setIsPosting(true);
+        let imageUrl: string | null = null;
+
         try {
+            if (imageFile) {
+                const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
+                const uploadResult = await uploadBytes(storageRef, imageFile);
+                imageUrl = await getDownloadURL(uploadResult.ref);
+            }
+
             await addDoc(collection(firestore, 'posts'), {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
                 content: newPost,
+                imageUrl,
                 createdAt: serverTimestamp(),
             });
             setNewPost('');
+            removeImage();
         } catch (error) {
             console.error("Erro ao criar post: ", error);
-            // Aqui você pode adicionar um toast de erro
         } finally {
             setIsPosting(false);
         }
@@ -109,15 +139,33 @@ export default function FeedPage() {
                             rows={4}
                             disabled={isPosting}
                         />
+                        {imagePreview && (
+                            <div className="relative">
+                                <Image src={imagePreview} alt="Preview da imagem" width={100} height={100} className="rounded-md object-cover h-24 w-24" />
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-6 w-6"
+                                    onClick={removeImage}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                         <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-end">
-                    <Button onClick={handlePostSubmit} disabled={isPosting || !newPost.trim()}>
+                <CardFooter className="flex justify-between items-center">
+                    <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isPosting}>
+                        <ImageIcon className="h-5 w-5" />
+                        <span className="sr-only">Adicionar imagem</span>
+                    </Button>
+                    <Button onClick={handlePostSubmit} disabled={isPosting || (!newPost.trim() && !imageFile)}>
                         {isPosting ? 'Publicando...' : 'Publicar'}
                     </Button>
                 </CardFooter>
             </Card>
-            
+
             <div className="space-y-4">
                 {posts.map(post => (
                     <Card key={post.id}>
@@ -136,11 +184,22 @@ export default function FeedPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <p className="whitespace-pre-wrap">{post.content}</p>
+                            {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
+                            {post.imageUrl && (
+                                <div className="relative aspect-video rounded-lg overflow-hidden border">
+                                    <Image
+                                        src={post.imageUrl}
+                                        alt="Imagem da publicação"
+                                        fill
+                                        className="object-cover"
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    />
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
-                 {posts.length === 0 && (
+                 {posts.length === 0 && !loading && (
                     <div className="text-center text-muted-foreground py-10">
                         <p>Ainda não há publicações.</p>
                         <p>Seja o primeiro a compartilhar algo!</p>
