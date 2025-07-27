@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,13 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-draw/dist/leaflet.draw.css';
-import dynamic from 'next/dynamic';
-
-const MapWithDraw = dynamic(() => import('@/components/map-with-draw'), {
-  ssr: false,
-});
 
 const initialPlots = [
   {
@@ -54,13 +47,6 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [mapKey, setMapKey] = useState(Date.now());
-
-  useEffect(() => {
-    if (isDialogOpen) {
-      setMapKey(Date.now());
-    }
-  }, [isDialogOpen]);
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -91,55 +77,50 @@ export default function FarmsPage() {
         </Button>
       </div>
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-4xl">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Talhão</DialogTitle>
               <DialogDescription>
-                Preencha as informações e desenhe o perímetro do talhão no mapa.
+                Preencha as informações do novo talhão.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                <div className="space-y-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                        Nome
-                        </Label>
-                        <Input
-                        id="name"
-                        value={newPlot.name}
-                        onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
-                        className="col-span-3"
-                        placeholder="Ex: Talhão da Estrada"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="crop" className="text-right">
-                        Cultura
-                        </Label>
-                        <Input
-                        id="crop"
-                        value={newPlot.crop}
-                        onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
-                        className="col-span-3"
-                        placeholder="Ex: Soja"
-                        />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="area" className="text-right">
-                        Área (ha)
-                        </Label>
-                        <Input
-                        id="area"
-                        type="number"
-                        value={newPlot.area}
-                        onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
-                        className="col-span-3"
-                        placeholder="Ex: 150"
-                        />
-                    </div>
+            <div className="py-4 space-y-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                    Nome
+                    </Label>
+                    <Input
+                    id="name"
+                    value={newPlot.name}
+                    onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
+                    className="col-span-3"
+                    placeholder="Ex: Talhão da Estrada"
+                    />
                 </div>
-                <div className="h-[400px] w-full bg-secondary rounded-lg">
-                  {isDialogOpen && <MapWithDraw key={mapKey} />}
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="crop" className="text-right">
+                    Cultura
+                    </Label>
+                    <Input
+                    id="crop"
+                    value={newPlot.crop}
+                    onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
+                    className="col-span-3"
+                    placeholder="Ex: Soja"
+                    />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="area" className="text-right">
+                    Área (ha)
+                    </Label>
+                    <Input
+                    id="area"
+                    type="number"
+                    value={newPlot.area}
+                    onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
+                    className="col-span-3"
+                    placeholder="Ex: 150"
+                    />
                 </div>
             </div>
             <DialogFooter>
