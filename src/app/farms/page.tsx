@@ -6,34 +6,34 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 
-const farms = [
+const plots = [
   {
     id: 1,
-    name: 'Fazenda Vista Verde',
-    location: 'Cascavel, PR',
-    owner: 'João da Silva',
-    status: 'Ativa',
+    name: 'Talhão 01 - Sede',
+    crop: 'Soja',
+    area: '150 ha',
+    status: 'Plantio',
   },
   {
     id: 2,
-    name: 'Sítio Boa Esperança',
-    location: 'Rio Verde, GO',
-    owner: 'Maria Oliveira',
-    status: 'Ativa',
+    name: 'Talhão 02 - Rio',
+    crop: 'Milho',
+    area: '120 ha',
+    status: 'Crescimento',
   },
     {
     id: 3,
-    name: 'Agropecuária Sul',
-    location: 'Dourados, MS',
-    owner: 'Carlos Pereira',
-    status: 'Inativa',
+    name: 'Talhão 03 - Armazém',
+    crop: 'Algodão',
+    area: '85 ha',
+    status: 'Colheita',
   },
     {
     id: 4,
-    name: 'Fazenda Nova Fronteira',
-    location: 'Sorriso, MT',
-    owner: 'José Almeida',
-    status: 'Ativa',
+    name: 'Talhão 04 - Pasto Novo',
+    crop: 'Pasto',
+    area: '200 ha',
+    status: 'Descanso',
   },
 ];
 
@@ -42,12 +42,12 @@ export default function FarmsPage() {
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Fazendas</h1>
-          <p className="text-muted-foreground">Gerencie as fazendas cadastradas no sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
+          <p className="text-muted-foreground">Gerencie os talhões da sua fazenda.</p>
         </div>
         <Button size="lg">
           <PlusCircle className="mr-2 h-5 w-5" />
-          Adicionar Nova Fazenda
+          Adicionar Novo Talhão
         </Button>
       </div>
 
@@ -56,22 +56,22 @@ export default function FarmsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome da Fazenda</TableHead>
-                <TableHead>Localização</TableHead>
-                <TableHead>Proprietário</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Nome do Talhão</TableHead>
+                <TableHead>Cultura</TableHead>
+                <TableHead>Área</TableHead>
+                <TableHead>Status Atual</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {farms.map((farm) => (
-                <TableRow key={farm.id}>
-                  <TableCell className="font-medium">{farm.name}</TableCell>
-                  <TableCell>{farm.location}</TableCell>
-                  <TableCell>{farm.owner}</TableCell>
+              {plots.map((plot) => (
+                <TableRow key={plot.id}>
+                  <TableCell className="font-medium">{plot.name}</TableCell>
+                  <TableCell>{plot.crop}</TableCell>
+                  <TableCell>{plot.area}</TableCell>
                   <TableCell>
-                    <Badge variant={farm.status === 'Ativa' ? 'default' : 'destructive'}>
-                      {farm.status}
+                    <Badge variant={plot.status === 'Colheita' ? 'default' : 'secondary'}>
+                      {plot.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

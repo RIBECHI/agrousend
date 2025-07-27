@@ -24,7 +24,7 @@ const navItems = [
   { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/forum', label: 'Fórum', icon: MessagesSquare },
   { href: '/events', label: 'Eventos', icon: CalendarDays },
-  { href: '/farms', label: 'Gestão de Fazendas', icon: Tractor },
+  { href: '/farms', label: 'Gestão de Talhões', icon: Tractor },
   { href: '/inventory', label: 'Controle de Estoque', icon: Warehouse },
   { href: '/profile', label: 'Perfil', icon: User },
   { href: '/notifications', label: 'Notificações', icon: Bell },
