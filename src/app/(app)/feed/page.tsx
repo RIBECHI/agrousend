@@ -7,9 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
-import { firestore, storage } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, doc, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { firestore } from '@/lib/firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -25,9 +24,17 @@ interface Post {
   authorName: string;
   authorPhotoURL: string | null;
   content: string;
-  imageUrl?: string;
+  imageUrl?: string; // Will store Base64 string
   createdAt: Timestamp;
 }
+
+// Helper to convert file to Base64
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
 
 export default function FeedPage() {
     const { user, loading } = useAuth();
@@ -76,11 +83,12 @@ export default function FeedPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            // 1MB limit for Base64 storage in Firestore
+            if (file.size > 1 * 1024 * 1024) {
                 toast({
                     variant: "destructive",
                     title: "Imagem muito grande",
-                    description: "Por favor, selecione uma imagem com menos de 5MB.",
+                    description: "Para evitar custos, selecione uma imagem com menos de 1MB.",
                 });
                 return;
             }
@@ -112,10 +120,8 @@ export default function FeedPage() {
             };
 
             if (imageFile) {
-                const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
-                const uploadResult = await uploadBytes(storageRef, imageFile);
-                const downloadURL = await getDownloadURL(uploadResult.ref);
-                postData.imageUrl = downloadURL;
+                const base64Image = await toBase64(imageFile);
+                postData.imageUrl = base64Image;
             }
 
             await addDoc(collection(firestore, 'posts'), postData);
@@ -127,7 +133,7 @@ export default function FeedPage() {
             toast({
                 variant: "destructive",
                 title: "Erro ao publicar",
-                description: error.message || "Não foi possível criar a publicação. Verifique as regras de segurança do Firebase.",
+                description: error.message || "Não foi possível criar a publicação. Verifique o console para mais detalhes.",
             });
         } finally {
             setIsPosting(false);
@@ -277,5 +283,6 @@ export default function FeedPage() {
         </aside>
     </div>
   );
+}
 
     
