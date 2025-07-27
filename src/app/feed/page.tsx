@@ -41,7 +41,6 @@ export default function FeedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // We will only attempt to fetch posts if the user is logged in.
     if (!user) return;
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
@@ -75,7 +74,6 @@ export default function FeedPage() {
 
   const handlePublish = async () => {
     if (!user) { 
-      // This should ideally not be reached if the UI is disabled correctly
       alert("Você precisa estar logado para publicar.");
       return;
     }
@@ -108,7 +106,6 @@ export default function FeedPage() {
         timestamp: new Date(),
       };
       
-      // Only add imageUrl to the document if it exists.
       if (imageUrl) {
         postData.imageUrl = imageUrl;
       }
