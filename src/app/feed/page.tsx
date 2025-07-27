@@ -31,7 +31,7 @@ interface Post {
 }
 
 export default function FeedPage() {
-  const { user } = useAuth(); 
+  const { user, loading } = useAuth(); 
   
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
@@ -41,7 +41,6 @@ export default function FeedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // We don't fetch posts if the user is not logged in
     if (!user) return;
 
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
@@ -151,7 +150,10 @@ export default function FeedPage() {
     return `${diffDays}d`;
   }
 
-  // If user is not logged in, show a call to action to login or signup
+  if (loading) {
+    return null; // Don't render anything while loading to avoid flashes of content
+  }
+
   if (!user) {
     return (
       <div className="container mx-auto max-w-2xl h-full flex items-center justify-center">
@@ -160,10 +162,10 @@ export default function FeedPage() {
                 <h3 className="text-xl font-semibold">Bem-vindo ao AgroUs!</h3>
                 <p className="text-muted-foreground">Para ver o feed e interagir com a comunidade, você precisa se conectar.</p>
                 <div className="flex gap-4 mt-2">
-                <Button asChild>
+                <Button asChild size="lg">
                     <Link href="/">Fazer Login</Link>
                 </Button>
-                <Button asChild variant="secondary">
+                <Button asChild variant="secondary" size="lg">
                     <Link href="/signup">Cadastre-se</Link>
                 </Button>
                 </div>
