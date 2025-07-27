@@ -1,9 +1,13 @@
+
+'use client';
+
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video } from 'lucide-react';
+import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { useRef, useState } from 'react';
 
 const posts = [
   {
@@ -54,6 +58,35 @@ const posts = [
 ];
 
 export default function Home() {
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMediaButtonClick = (accept: string) => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = accept;
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const type = file.type.startsWith('image/') ? 'image' : 'video';
+      setMediaPreview({ url, type });
+    }
+  };
+
+  const removeMedia = () => {
+    if (mediaPreview) {
+      URL.revokeObjectURL(mediaPreview.url);
+    }
+    setMediaPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-2xl">
       <div className="space-y-6">
@@ -66,12 +99,41 @@ export default function Home() {
               </Avatar>
               <div className="w-full">
                 <Textarea placeholder="No que você está pensando, produtor?" className="mb-2 bg-secondary border-none" />
-                <div className="flex justify-between items-center">
+                {mediaPreview && (
+                  <div className="mt-4 relative">
+                    {mediaPreview.type === 'image' ? (
+                      <Image
+                        src={mediaPreview.url}
+                        alt="Preview"
+                        width={500}
+                        height={300}
+                        className="rounded-lg object-cover w-full"
+                      />
+                    ) : (
+                      <video src={mediaPreview.url} controls className="rounded-lg w-full" />
+                    )}
+                     <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7"
+                        onClick={removeMedia}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                  </div>
+                )}
+                <div className="flex justify-between items-center mt-2">
                     <div className="flex gap-2">
-                        <Button variant="ghost" size="icon">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => handleMediaButtonClick('image/*')}>
                             <ImagePlus className="h-5 w-5 text-muted-foreground" />
                         </Button>
-                         <Button variant="ghost" size="icon">
+                         <Button variant="ghost" size="icon" onClick={() => handleMediaButtonClick('video/*')}>
                             <Video className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </div>
