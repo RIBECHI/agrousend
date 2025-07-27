@@ -25,7 +25,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Redireciona para o feed APENAS após o sucesso do login.
+      // A única navegação ocorre aqui, após o sucesso do login.
       router.push('/feed');
     } catch (error: any) {
       toast({
