@@ -79,51 +79,63 @@ export default function FarmsPage() {
               Adicionar Novo Talhão
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Talhão</DialogTitle>
               <DialogDescription>
-                Preencha as informações abaixo para cadastrar um novo talhão.
+                Preencha as informações e desenhe o perímetro do talhão no mapa.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Nome
-                </Label>
-                <Input
-                  id="name"
-                  value={newPlot.name}
-                  onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Ex: Talhão da Estrada"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="crop" className="text-right">
-                  Cultura
-                </Label>
-                <Input
-                  id="crop"
-                  value={newPlot.crop}
-                  onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Ex: Soja"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="area" className="text-right">
-                  Área (ha)
-                </Label>
-                <Input
-                  id="area"
-                  type="number"
-                  value={newPlot.area}
-                  onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
-                  className="col-span-3"
-                  placeholder="Ex: 150"
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                <div className="space-y-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                        Nome
+                        </Label>
+                        <Input
+                        id="name"
+                        value={newPlot.name}
+                        onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
+                        className="col-span-3"
+                        placeholder="Ex: Talhão da Estrada"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="crop" className="text-right">
+                        Cultura
+                        </Label>
+                        <Input
+                        id="crop"
+                        value={newPlot.crop}
+                        onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
+                        className="col-span-3"
+                        placeholder="Ex: Soja"
+                        />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="area" className="text-right">
+                        Área (ha)
+                        </Label>
+                        <Input
+                        id="area"
+                        type="number"
+                        value={newPlot.area}
+                        onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
+                        className="col-span-3"
+                        placeholder="Ex: 150"
+                        />
+                    </div>
+                </div>
+                 <div className="h-[400px] w-full bg-secondary rounded-lg">
+                    <Image 
+                        src="https://placehold.co/800x600.png" 
+                        alt="Mapa para desenhar talhão" 
+                        className="w-full h-full object-cover rounded-md"
+                        width={800}
+                        height={600}
+                        data-ai-hint="satellite farm map"
+                    />
+                </div>
             </div>
             <DialogFooter>
               <Button onClick={handleAddPlot}>Salvar Talhão</Button>
@@ -132,25 +144,7 @@ export default function FarmsPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="lg:col-span-1 h-[600px]">
-           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Map className="h-5 w-5"/> Mapa da Fazenda</CardTitle>
-            <CardDescription>Visualize e desenhe o perímetro dos seus talhões.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[500px] w-full bg-secondary rounded-b-lg">
-             <Image 
-                src="https://placehold.co/800x600.png" 
-                alt="Mapa da fazenda" 
-                className="w-full h-full object-cover rounded-md"
-                width={800}
-                height={600}
-                data-ai-hint="satellite farm map"
-             />
-          </CardContent>
-        </Card>
-        
-        <Card className="lg:col-span-1">
+        <Card>
           <CardHeader>
             <CardTitle>Lista de Talhões</CardTitle>
           </CardHeader>
@@ -197,7 +191,6 @@ export default function FarmsPage() {
             </Table>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }
