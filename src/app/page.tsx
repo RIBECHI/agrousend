@@ -1,16 +1,14 @@
 
 'use client';
 
-import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } from 'lucide-react';
+import { MessageCircle, ThumbsUp, Share2, MoreHorizontal } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { useRef, useState, useEffect } from 'react';
-import { firestore, storage, auth } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
+import { firestore, auth } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 
 interface Post {
@@ -21,9 +19,6 @@ interface Post {
     handle: string;
   };
   content: string;
-  image?: string;
-  video?: string;
-  imageHint?: string;
   likes: number;
   comments: number;
   shares: number;
@@ -33,9 +28,6 @@ interface Post {
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
@@ -49,7 +41,6 @@ export default function Home() {
           setUser(userCredential.user);
         } catch (error) {
           console.error("Error signing in anonymously:", error);
-          // Handle error appropriately, maybe show a toast
         }
       }
     });
@@ -71,45 +62,20 @@ export default function Home() {
     };
   }, []);
 
-  const handleMediaButtonClick = (accept: string) => {
-    if (fileInputRef.current) {
-      fileInputRef.current.accept = accept;
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const type = file.type.startsWith('image/') ? 'image' : 'video';
-      setMediaFile(file);
-      setMediaPreview({ url, type });
-    }
-  };
-
-  const removeMedia = () => {
-    if (mediaPreview) {
-      URL.revokeObjectURL(mediaPreview.url);
-    }
-    setMediaPreview(null);
-    setMediaFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   const handlePublish = async () => {
     if (!user) {
       alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
       return;
     }
-    if (!postContent.trim() && !mediaFile) return;
+    if (!postContent.trim()) {
+        alert("A publicação não pode estar vazia.");
+        return;
+    }
 
     setIsPublishing(true);
 
     try {
-      const newPost: any = {
+      const newPost = {
         author: {
           name: 'Usuário Anônimo',
           avatar: 'https://placehold.co/40x40.png',
@@ -122,27 +88,13 @@ export default function Home() {
         timestamp: new Date(),
       };
 
-      if (mediaFile) {
-        const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, mediaFile);
-        const mediaUrl = await getDownloadURL(uploadResult.ref);
-
-        if (mediaType === 'image') {
-          newPost.image = mediaUrl;
-          newPost.imageHint = 'new post';
-        } else {
-          newPost.video = mediaUrl;
-        }
-      }
-
       await addDoc(collection(firestore, "posts"), newPost);
 
       setPostContent('');
-      removeMedia();
     } catch (error) {
       console.error("Erro ao publicar:", error);
-      alert(`Ocorreu um erro ao publicar: ${error instanceof Error ? error.message : String(error)}`);
+      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+      alert(`Ocorreu um erro ao publicar: ${errorMessage}`);
     } finally {
       setIsPublishing(false);
     }
@@ -190,45 +142,7 @@ export default function Home() {
                   value={postContent}
                   onChange={(e) => setPostContent(e.target.value)}
                 />
-                {mediaPreview && (
-                  <div className="mt-4 relative">
-                    {mediaPreview.type === 'image' ? (
-                      <Image
-                        src={mediaPreview.url}
-                        alt="Preview"
-                        width={500}
-                        height={300}
-                        className="rounded-lg object-cover w-full"
-                      />
-                    ) : (
-                      <video src={mediaPreview.url} controls className="rounded-lg w-full" />
-                    )}
-                     <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7"
-                        onClick={removeMedia}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                  </div>
-                )}
-                <div className="flex justify-between items-center mt-2">
-                    <div className="flex gap-2">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          className="hidden"
-                          accept="image/*,video/*"
-                        />
-                        <Button variant="ghost" size="icon" onClick={() => handleMediaButtonClick('image/*')}>
-                            <ImagePlus className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                         <Button variant="ghost" size="icon" onClick={() => handleMediaButtonClick('video/*')}>
-                            <Video className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                    </div>
+                <div className="flex justify-end items-center mt-2">
                   <Button onClick={handlePublish} disabled={!user || isPublishing}>
                     {isPublishing ? 'Publicando...' : 'Publicar'}
                   </Button>
@@ -255,22 +169,6 @@ export default function Home() {
             </CardHeader>
             <CardContent className="px-4 pb-0">
               <p className="mb-4">{post.content}</p>
-              {post.image && (
-                <div className="relative aspect-video w-full rounded-lg border">
-                  <Image
-                    src={post.image}
-                    alt="Post image"
-                    fill
-                    className="object-cover rounded-lg"
-                    data-ai-hint={post.imageHint}
-                  />
-                </div>
-              )}
-               {post.video && (
-                <div className="relative aspect-video w-full rounded-lg border">
-                  <video src={post.video} controls className="rounded-lg w-full h-full object-cover" />
-                </div>
-              )}
             </CardContent>
             <CardFooter className="flex justify-between p-4">
               <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground">
@@ -292,5 +190,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
