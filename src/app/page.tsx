@@ -9,7 +9,7 @@ import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } 
 import { Textarea } from '@/components/ui/textarea';
 import { useRef, useState } from 'react';
 
-const posts = [
+const initialPosts = [
   {
     id: 1,
     author: {
@@ -58,6 +58,8 @@ const posts = [
 ];
 
 export default function Home() {
+  const [posts, setPosts] = useState(initialPosts);
+  const [postContent, setPostContent] = useState('');
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +89,32 @@ export default function Home() {
     }
   };
 
+  const handlePublish = () => {
+    if (!postContent && !mediaPreview) return;
+
+    const newPost = {
+      id: posts.length + 1,
+      author: {
+        name: 'Você',
+        avatar: 'https://placehold.co/40x40.png',
+        handle: '@voce',
+      },
+      content: postContent,
+      image: mediaPreview?.type === 'image' ? mediaPreview.url : undefined,
+      video: mediaPreview?.type === 'video' ? mediaPreview.url : undefined,
+      imageHint: 'new post',
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      timestamp: 'Agora',
+    };
+
+    setPosts([newPost, ...posts]);
+    setPostContent('');
+    removeMedia();
+  };
+
+
   return (
     <div className="container mx-auto max-w-2xl">
       <div className="space-y-6">
@@ -98,7 +126,12 @@ export default function Home() {
                 <AvatarFallback>EU</AvatarFallback>
               </Avatar>
               <div className="w-full">
-                <Textarea placeholder="No que você está pensando, produtor?" className="mb-2 bg-secondary border-none" />
+                <Textarea 
+                  placeholder="No que você está pensando, produtor?" 
+                  className="mb-2 bg-secondary border-none"
+                  value={postContent}
+                  onChange={(e) => setPostContent(e.target.value)}
+                />
                 {mediaPreview && (
                   <div className="mt-4 relative">
                     {mediaPreview.type === 'image' ? (
@@ -137,7 +170,7 @@ export default function Home() {
                             <Video className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </div>
-                  <Button>Publicar</Button>
+                  <Button onClick={handlePublish}>Publicar</Button>
                 </div>
               </div>
             </div>
@@ -170,6 +203,11 @@ export default function Home() {
                     className="object-cover rounded-lg"
                     data-ai-hint={post.imageHint}
                   />
+                </div>
+              )}
+               {(post as any).video && (
+                <div className="relative aspect-video w-full rounded-lg border">
+                  <video src={(post as any).video} controls className="rounded-lg w-full h-full object-cover" />
                 </div>
               )}
             </CardContent>
