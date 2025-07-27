@@ -11,6 +11,8 @@ import { useRef, useState, useEffect } from 'react';
 import app from '@/lib/firebase';
 import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+
 
 interface Post {
   id: string;
@@ -39,8 +41,21 @@ export default function Home() {
 
   const db = getFirestore(app);
   const storage = getStorage(app);
+  const auth = getAuth(app);
 
   useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in.
+        console.log('User signed in anonymously:', user.uid);
+      } else {
+        // User is signed out.
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous sign-in error:", error);
+        });
+      }
+    });
+    
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
@@ -59,7 +74,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, [db]);
+  }, [db, auth]);
 
 
   const handleMediaButtonClick = (accept: string) => {
@@ -81,7 +96,7 @@ export default function Home() {
 
   const removeMedia = () => {
     if (mediaPreview) {
-      // O navegador gerencia a revogação do object URL
+      // A URL do objeto não precisa mais ser revogada manualmente aqui
     }
     setMediaPreview(null);
     setMediaFile(null);
@@ -93,15 +108,19 @@ export default function Home() {
   const handlePublish = async () => {
     if (!postContent && !mediaFile) return;
 
-    try {
-        let mediaUrl = '';
-        let mediaType: 'image' | 'video' | undefined = undefined;
+    // Garante que o usuário esteja logado anonimamente antes de publicar
+    if (!auth.currentUser) {
+        alert("Autenticação necessária. Por favor, aguarde e tente novamente.");
+        console.error("Usuário não autenticado.");
+        return;
+    }
 
+    try {
         const postData: any = {
           author: {
-            name: 'Você (Usuário Teste)',
+            name: 'Usuário Anônimo',
             avatar: 'https://placehold.co/40x40.png',
-            handle: '@voce',
+            handle: `@user${auth.currentUser.uid.substring(0, 5)}`,
           },
           content: postContent,
           likes: 0,
@@ -113,8 +132,8 @@ export default function Home() {
         if (mediaFile) {
             const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
             await uploadBytes(storageRef, mediaFile);
-            mediaUrl = await getDownloadURL(storageRef);
-            mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+            const mediaUrl = await getDownloadURL(storageRef);
+            const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
 
             if (mediaType === 'image') {
               postData.image = mediaUrl;
@@ -131,7 +150,7 @@ export default function Home() {
         removeMedia();
     } catch (error) {
         console.error("Error publishing post: ", error);
-        alert("Ocorreu um erro ao publicar. Verifique se as Regras de Segurança do Firestore e do Storage estão configuradas para permitir escrita pública durante o desenvolvimento.");
+        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes.");
     }
   };
   
@@ -142,14 +161,17 @@ export default function Home() {
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
     } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
+      // Isso lida com o objeto retornado do Firestore que ainda não foi convertido para um objeto Timestamp
       date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
     } else {
-      return 'agora';
+      // Retorno para casos onde o timestamp pode ser inválido ou ainda não definido pelo servidor
+      return 'enviando...';
     }
   
     const now = new Date();
     const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
   
+    if (diffSeconds < 5) return 'agora';
     if (diffSeconds < 60) return `${diffSeconds}s`;
     const diffMinutes = Math.round(diffSeconds / 60);
     if (diffMinutes < 60) return `${diffMinutes}m`;
