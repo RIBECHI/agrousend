@@ -24,12 +24,12 @@ export function UserNav() {
 
   const handleSignOut = async () => {
     await signOut(auth);
-    router.push('/login');
+    router.push('/');
   };
 
   if (!user) {
     return (
-       <Link href="/login" passHref>
+       <Link href="/" passHref>
           <Button variant="outline">Entrar</Button>
        </Link>
     );

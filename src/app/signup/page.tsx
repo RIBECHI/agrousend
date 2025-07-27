@@ -29,7 +29,7 @@ export default function SignUpPage() {
       await updateProfile(userCredential.user, {
         displayName: name,
       });
-      router.push('/');
+      router.push('/feed');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -97,7 +97,7 @@ export default function SignUpPage() {
           </form>
            <div className="mt-4 text-center text-sm">
             Já tem uma conta?{' '}
-            <Link href="/login" className="underline">
+            <Link href="/" className="underline">
               Entrar
             </Link>
           </div>
