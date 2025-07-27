@@ -9,7 +9,7 @@ import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } 
 import { Textarea } from '@/components/ui/textarea';
 import { useRef, useState, useEffect } from 'react';
 import { firestore, storage, auth } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 
@@ -128,7 +128,7 @@ export default function Home() {
         likes: 0,
         comments: 0,
         shares: 0,
-        timestamp: serverTimestamp(),
+        timestamp: new Date(),
       };
       
       if (mediaFile) {
@@ -158,20 +158,15 @@ export default function Home() {
   };
   
   const formatTimestamp = (timestamp: any) => {
-    if (!timestamp) return 'agora';
+    if (!timestamp) return 'enviando...';
   
     let date: Date;
-    // Check if it's a Firestore Timestamp object
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
-    } 
-    // Check for the structure Firestore sends for pending timestamps
-    else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
-      date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
-    } 
-    // If it's still null or not a valid format, it might be a pending write
-    else {
-      return 'enviando...';
+    } else if (timestamp instanceof Date) {
+      date = timestamp;
+    } else {
+        return 'agora';
     }
   
     const now = new Date();
@@ -306,5 +301,3 @@ export default function Home() {
       </div>
     </div>
   );
-
-    
