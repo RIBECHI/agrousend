@@ -4,12 +4,14 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, ThumbsUp, Share2, MoreHorizontal } from 'lucide-react';
+import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { useState, useEffect } from 'react';
-import { firestore, auth } from '@/lib/firebase';
+import { useState, useEffect, useRef } from 'react';
+import { firestore, auth, storage } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import Image from 'next/image';
 
 interface Post {
   id: string;
@@ -19,6 +21,7 @@ interface Post {
     handle: string;
   };
   content: string;
+  imageUrl?: string;
   likes: number;
   comments: number;
   shares: number;
@@ -28,10 +31,14 @@ interface Post {
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
+  const [postMedia, setPostMedia] = useState<File | null>(null);
+  const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // 1. Monitorar o estado de autenticação
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
@@ -45,6 +52,7 @@ export default function Home() {
       }
     });
 
+    // 2. Buscar os posts
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
@@ -62,12 +70,28 @@ export default function Home() {
     };
   }, []);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setPostMedia(file);
+      setPostMediaPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeMedia = () => {
+    setPostMedia(null);
+    setPostMediaPreview(null);
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }
+
   const handlePublish = async () => {
     if (!user) {
       alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
       return;
     }
-    if (!postContent.trim()) {
+    if (!postContent.trim() && !postMedia) {
         alert("A publicação não pode estar vazia.");
         return;
     }
@@ -75,6 +99,16 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
+      let imageUrl: string | undefined = undefined;
+
+      // Upload de mídia se existir
+      if (postMedia) {
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${postMedia.name}`);
+        const uploadResult = await uploadBytes(storageRef, postMedia);
+        imageUrl = await getDownloadURL(uploadResult.ref);
+      }
+
+      // Criar o objeto do post
       const newPost = {
         author: {
           name: 'Usuário Anônimo',
@@ -82,15 +116,20 @@ export default function Home() {
           handle: `@user${user.uid.substring(0, 5)}`,
         },
         content: postContent,
+        imageUrl: imageUrl,
         likes: 0,
         comments: 0,
         shares: 0,
         timestamp: new Date(),
       };
 
+      // Salvar no Firestore
       await addDoc(collection(firestore, "posts"), newPost);
 
+      // Limpar formulário
       setPostContent('');
+      removeMedia();
+
     } catch (error) {
       console.error("Erro ao publicar:", error);
       const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
@@ -142,7 +181,22 @@ export default function Home() {
                   value={postContent}
                   onChange={(e) => setPostContent(e.target.value)}
                 />
-                <div className="flex justify-end items-center mt-2">
+
+                {postMediaPreview && (
+                  <div className="relative mt-2">
+                    <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="flex justify-between items-center mt-2">
+                  <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}>
+                    <ImageIcon className="h-5 w-5" />
+                  </Button>
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
+
                   <Button onClick={handlePublish} disabled={!user || isPublishing}>
                     {isPublishing ? 'Publicando...' : 'Publicar'}
                   </Button>
@@ -169,6 +223,11 @@ export default function Home() {
             </CardHeader>
             <CardContent className="px-4 pb-0">
               <p className="mb-4">{post.content}</p>
+              {post.imageUrl && (
+                <div className="mb-4">
+                   <Image src={post.imageUrl} alt="Post media" width={1200} height={675} className="rounded-lg w-full h-auto object-cover border" />
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-between p-4">
               <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground">
