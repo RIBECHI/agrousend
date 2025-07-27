@@ -25,9 +25,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // No sucesso do login, o hook de autenticação irá atualizar o estado 'user',
-      // e o layout protegido fará o redirecionamento.
-      // Adicionamos um redirecionamento explícito aqui por segurança.
+      // Redireciona para o feed APENAS após o sucesso do login.
       router.push('/feed');
     } catch (error: any) {
       toast({

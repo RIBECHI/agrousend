@@ -23,8 +23,9 @@ export default function FeedPage() {
     );
   }
 
-  // Se não houver usuário, mas a página for renderizada (cenário de fallback)
-  // mostramos os botões de login e cadastro.
+  // Se o usuário não está logado, mostra a tela para criar conta ou fazer login.
+  // Isso acontece porque o AppLayout permite que esta página seja renderizada,
+  // mas o conteúdo dela é que decide o que mostrar.
   if (!user) {
     return (
         <div className="flex-1 flex items-center justify-center bg-secondary p-4 h-full">
@@ -44,6 +45,7 @@ export default function FeedPage() {
     );
   }
 
+  // Se o usuário está logado, mostra o conteúdo do feed.
   return (
     <div className="p-4 md:p-6 lg:p-8">
         <div className="max-w-2xl mx-auto">
