@@ -7,61 +7,57 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import app from '@/lib/firebase';
+import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-const initialPosts = [
-  {
-    id: 1,
-    author: {
-      name: 'João da Silva',
-      avatar: 'https://placehold.co/40x40.png',
-      handle: '@joaosilva',
-    },
-    content: 'Colheita de soja começando a todo vapor! O tempo ajudou e a expectativa é de uma safra recorde. #agro #soja #safra2024',
-    image: 'https://placehold.co/600x400.png',
-    imageHint: 'soybean harvest',
-    likes: 125,
-    comments: 23,
-    shares: 12,
-    timestamp: '2h',
-  },
-  {
-    id: 2,
-    author: {
-      name: 'Maria Oliveira',
-      avatar: 'https://placehold.co/40x40.png',
-      handle: '@mariaoliveira',
-    },
-    content: 'Dia de campo sobre novas tecnologias de irrigação. Aprendendo muito para otimizar o uso da água na fazenda. 💧🌱',
-    image: 'https://placehold.co/600x400.png',
-    imageHint: 'farm irrigation',
-    likes: 88,
-    comments: 15,
-    shares: 5,
-    timestamp: '5h',
-  },
-  {
-    id: 3,
-    author: {
-      name: 'Carlos Pereira',
-      avatar: 'https://placehold.co/40x40.png',
-      handle: '@carlospereira',
-    },
-    content: 'Nosso novo trator chegou! Animado para colocar essa máquina pra trabalhar. Mais eficiência e produtividade para a nossa lavoura de milho.',
-    image: 'https://placehold.co/600x400.png',
-    imageHint: 'new tractor',
-    likes: 210,
-    comments: 45,
-    shares: 20,
-    timestamp: '1d',
-  },
-];
+interface Post {
+  id: string;
+  author: {
+    name: string;
+    avatar: string;
+    handle: string;
+  };
+  content: string;
+  image?: string;
+  video?: string;
+  imageHint?: string;
+  likes: number;
+  comments: number;
+  shares: number;
+  timestamp: any;
+}
+
 
 export default function Home() {
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  useEffect(() => {
+    const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const postsData: Post[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        postsData.push({ 
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp,
+        } as Post);
+      });
+      setPosts(postsData);
+    });
+
+    return () => unsubscribe();
+  }, [db]);
+
 
   const handleMediaButtonClick = (accept: string) => {
     if (fileInputRef.current) {
@@ -75,41 +71,73 @@ export default function Home() {
     if (file) {
       const url = URL.createObjectURL(file);
       const type = file.type.startsWith('image/') ? 'image' : 'video';
+      setMediaFile(file);
       setMediaPreview({ url, type });
     }
   };
 
   const removeMedia = () => {
+    if (mediaPreview) {
+      // URL.revokeObjectURL(mediaPreview.url); // Let browser handle this
+    }
     setMediaPreview(null);
+    setMediaFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const handlePublish = () => {
-    if (!postContent && !mediaPreview) return;
+  const handlePublish = async () => {
+    if (!postContent && !mediaFile) return;
 
-    const newPost = {
-      id: posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1,
+    let mediaUrl = '';
+    let mediaType: 'image' | 'video' | undefined = undefined;
+
+    if (mediaFile) {
+        const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
+        await uploadBytes(storageRef, mediaFile);
+        mediaUrl = await getDownloadURL(storageRef);
+        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+    }
+
+
+    await addDoc(collection(db, "posts"), {
       author: {
-        name: 'Você',
+        name: 'Você (Usuário Teste)',
         avatar: 'https://placehold.co/40x40.png',
         handle: '@voce',
       },
       content: postContent,
-      image: mediaPreview?.type === 'image' ? mediaPreview.url : undefined,
-      video: mediaPreview?.type === 'video' ? mediaPreview.url : undefined,
+      image: mediaType === 'image' ? mediaUrl : undefined,
+      video: mediaType === 'video' ? mediaUrl : undefined,
       imageHint: 'new post',
       likes: 0,
       comments: 0,
       shares: 0,
-      timestamp: 'Agora',
-    };
+      timestamp: serverTimestamp(),
+    });
 
-    setPosts([newPost, ...posts]);
     setPostContent('');
     removeMedia();
   };
+  
+  const formatTimestamp = (timestamp: any) => {
+    if (!timestamp) return 'Agora';
+    if (timestamp.seconds) {
+       const date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
+       const now = new Date();
+       const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+       
+       if (diffSeconds < 60) return `${diffSeconds}s`;
+       const diffMinutes = Math.round(diffSeconds / 60);
+       if (diffMinutes < 60) return `${diffMinutes}m`;
+       const diffHours = Math.round(diffMinutes / 60);
+       if (diffHours < 24) return `${diffHours}h`;
+       const diffDays = Math.round(diffHours / 24);
+       return `${diffDays}d`;
+    }
+    return 'Agora';
+  }
 
 
   return (
@@ -183,7 +211,7 @@ export default function Home() {
               </Avatar>
               <div className="flex-1">
                 <p className="font-semibold">{post.author.name}</p>
-                <p className="text-sm text-muted-foreground">{post.author.handle} · {post.timestamp}</p>
+                <p className="text-sm text-muted-foreground">{post.author.handle} · {formatTimestamp(post.timestamp)}</p>
               </div>
               <Button variant="ghost" size="icon">
                 <MoreHorizontal className="h-5 w-5" />
@@ -202,9 +230,9 @@ export default function Home() {
                   />
                 </div>
               )}
-               {(post as any).video && (
+               {post.video && (
                 <div className="relative aspect-video w-full rounded-lg border">
-                  <video src={(post as any).video} controls className="rounded-lg w-full h-full object-cover" />
+                  <video src={post.video} controls className="rounded-lg w-full h-full object-cover" />
                 </div>
               )}
             </CardContent>
