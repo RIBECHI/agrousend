@@ -1,13 +1,14 @@
 
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permite que qualquer usuário autenticado crie posts
+    // As postagens podem ser lidas por qualquer pessoa
     match /posts/{postId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.authorId;
+      // As postagens só podem ser criadas, atualizadas ou excluídas pelo autor
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.authorId;
     }
   }
 }
+
+    

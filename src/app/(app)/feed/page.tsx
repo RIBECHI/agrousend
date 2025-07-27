@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore, storage } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, doc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -16,6 +16,8 @@ import { ptBR } from 'date-fns/locale';
 import { ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface Post {
   id: string;
@@ -35,9 +37,9 @@ export default function FeedPage() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
-        if (!user) return;
         const postsCollection = collection(firestore, 'posts');
         const q = query(postsCollection, orderBy('createdAt', 'desc'));
 
@@ -49,10 +51,15 @@ export default function FeedPage() {
             setPosts(fetchedPosts);
         }, (error) => {
             console.error("Erro ao buscar posts: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao carregar o feed",
+                description: "Houve um problema ao buscar as publicações. Tente novamente mais tarde.",
+            });
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [toast]);
 
     const removeImage = useCallback(() => {
         setImageFile(null);
@@ -69,6 +76,14 @@ export default function FeedPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                toast({
+                    variant: "destructive",
+                    title: "Imagem muito grande",
+                    description: "Por favor, selecione uma imagem com menos de 5MB.",
+                });
+                return;
+            }
             setImageFile(file);
             setImagePreview(URL.createObjectURL(file));
         }
@@ -81,7 +96,14 @@ export default function FeedPage() {
         setIsPosting(true);
 
         try {
-            let postData: any = {
+            const postData: {
+                authorId: string;
+                authorName: string;
+                authorPhotoURL: string | null;
+                content: string;
+                createdAt: any;
+                imageUrl?: string;
+            } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
@@ -92,18 +114,25 @@ export default function FeedPage() {
             if (imageFile) {
                 const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
                 const uploadResult = await uploadBytes(storageRef, imageFile);
-                postData.imageUrl = await getDownloadURL(uploadResult.ref);
+                const downloadURL = await getDownloadURL(uploadResult.ref);
+                postData.imageUrl = downloadURL;
             }
 
             await addDoc(collection(firestore, 'posts'), postData);
+
             setNewPost('');
             removeImage();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao criar post: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao publicar",
+                description: error.message || "Não foi possível criar a publicação. Verifique as regras de segurança do Firebase.",
+            });
         } finally {
             setIsPosting(false);
         }
-    }, [newPost, imageFile, user, removeImage]);
+    }, [newPost, imageFile, user, removeImage, toast]);
 
     if (loading) {
         return (
@@ -173,6 +202,7 @@ export default function FeedPage() {
                                     size="icon"
                                     className="absolute top-1 right-1 h-6 w-6"
                                     onClick={removeImage}
+                                    disabled={isPosting}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -212,7 +242,7 @@ export default function FeedPage() {
                         <CardContent>
                             {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
                             {post.imageUrl && (
-                                <div className="relative aspect-video rounded-lg overflow-hidden border">
+                                <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
                                     <Image
                                         src={post.imageUrl}
                                         alt="Imagem da publicação"
