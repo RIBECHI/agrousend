@@ -79,23 +79,23 @@ export default function FeedPage() {
         if ((!newPost.trim() && !imageFile) || !user) return;
 
         setIsPosting(true);
-        let imageUrl: string | undefined = undefined;
 
         try {
-            if (imageFile) {
-                const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
-                const uploadResult = await uploadBytes(storageRef, imageFile);
-                imageUrl = await getDownloadURL(uploadResult.ref);
-            }
-
-            await addDoc(collection(firestore, 'posts'), {
+            let postData: any = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
                 content: newPost,
-                imageUrl,
                 createdAt: serverTimestamp(),
-            });
+            };
+
+            if (imageFile) {
+                const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${imageFile.name}`);
+                const uploadResult = await uploadBytes(storageRef, imageFile);
+                postData.imageUrl = await getDownloadURL(uploadResult.ref);
+            }
+
+            await addDoc(collection(firestore, 'posts'), postData);
             setNewPost('');
             removeImage();
         } catch (error) {
