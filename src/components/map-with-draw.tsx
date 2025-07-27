@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import L from 'leaflet';
+import L, { LatLngTuple } from 'leaflet';
 import 'leaflet-draw';
 
 // Workaround for Leaflet's default icon issues with bundlers
@@ -11,12 +11,17 @@ import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
 interface MapWithDrawProps {
-    onDrawComplete: (areaInHectares: number) => void;
+    onDrawComplete: (areaInHectares: number, layer: any) => void;
+    onMapStateChange: (center: LatLngTuple, zoom: number) => void;
+    center: LatLngTuple;
+    zoom: number;
+    drawnLayer: any;
 }
 
-const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
+const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateChange, center, zoom, drawnLayer }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
 
   useEffect(() => {
     if (mapContainerRef.current && !mapInstanceRef.current) {
@@ -33,8 +38,8 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
       L.Marker.prototype.options.icon = DefaultIcon;
 
       const map = L.map(mapContainerRef.current, {
-        center: [-15.77972, -47.92972],
-        zoom: 4,
+        center: center,
+        zoom: zoom,
       });
       mapInstanceRef.current = map;
 
@@ -45,6 +50,13 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
       // FeatureGroup to store editable layers
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);
+      drawnItemsRef.current = drawnItems;
+
+      // Restore previously drawn layer
+      if (drawnLayer) {
+        const layer = L.geoJSON(drawnLayer);
+        layer.eachLayer(l => drawnItems.addLayer(l));
+      }
 
       // Initialize the draw control
       const drawControl = new L.Control.Draw({
@@ -52,7 +64,12 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
           featureGroup: drawnItems,
         },
         draw: {
-          polygon: true,
+          polygon: {
+            allowIntersection: false,
+            shapeOptions: {
+              color: '#f06e52'
+            }
+          },
           polyline: false,
           rectangle: false,
           circle: false,
@@ -64,6 +81,9 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
 
       map.on(L.Draw.Event.CREATED, (event) => {
         const layer = (event as any).layer;
+        
+        // Clear previous drawings
+        drawnItems.clearLayers();
         drawnItems.addLayer(layer);
         
         // Calculate area
@@ -71,8 +91,15 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
         const areaInSquareMeters = L.GeometryUtil.geodesicArea(latlngs);
         const areaInHectares = areaInSquareMeters / 10000;
         
-        onDrawComplete(areaInHectares);
+        onDrawComplete(areaInHectares, layer.toGeoJSON());
       });
+      
+      map.on('zoomend moveend', () => {
+          const newCenter = map.getCenter();
+          const newZoom = map.getZoom();
+          onMapStateChange([newCenter.lat, newCenter.lng], newZoom);
+      });
+
     }
 
     return () => {
@@ -81,7 +108,7 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
         mapInstanceRef.current = null;
       }
     };
-  }, [onDrawComplete]);
+  }, [onDrawComplete, onMapStateChange, center, zoom, drawnLayer]);
 
   return (
     <div

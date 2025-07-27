@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { LatLngTuple } from 'leaflet';
 
 const MapWithDraw = dynamic(() => import('@/components/map-with-draw'), { ssr: false });
 
@@ -50,6 +51,10 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [mapCenter, setMapCenter] = useState<LatLngTuple>([-15.77972, -47.92972]);
+  const [mapZoom, setMapZoom] = useState(4);
+  const [drawnLayer, setDrawnLayer] = useState<any>(null);
+
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -63,18 +68,29 @@ export default function FarmsPage() {
         },
       ]);
       setNewPlot({ name: '', crop: '', area: '' });
+      setDrawnLayer(null);
       setIsDialogOpen(false);
     }
   };
 
-  const handleAreaCalculated = (areaInHectares: number) => {
+  const handleDrawComplete = (areaInHectares: number, layer: any) => {
     setNewPlot(prev => ({ ...prev, area: areaInHectares.toFixed(2) }));
+    setDrawnLayer(layer);
+  };
+  
+  const handleMapStateChange = (center: LatLngTuple, zoom: number) => {
+    setMapCenter(center);
+    setMapZoom(zoom);
   };
 
   const openDialog = () => {
     setIsDialogOpen(true);
   }
   
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+  }
+
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -122,16 +138,25 @@ export default function FarmsPage() {
                       type="number"
                       value={newPlot.area}
                       onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
-                      placeholder="Ex: 150"
+                      placeholder="Calculada pelo desenho no mapa"
+                      readOnly
                       />
                   </div>
               </div>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
-                {isDialogOpen && <MapWithDraw onDrawComplete={handleAreaCalculated} />}
+                {isDialogOpen && (
+                  <MapWithDraw 
+                    onDrawComplete={handleDrawComplete} 
+                    onMapStateChange={handleMapStateChange}
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    drawnLayer={drawnLayer}
+                  />
+                )}
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button onClick={handleAddPlot}>Salvar Talhão</Button>
             </DialogFooter>
           </DialogContent>
