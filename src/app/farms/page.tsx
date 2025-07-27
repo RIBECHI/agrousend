@@ -11,6 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const MapDisplay = dynamic(() => import('@/components/map-display'), { ssr: false });
 
 const initialPlots = [
   {
@@ -77,53 +80,50 @@ export default function FarmsPage() {
         </Button>
       </div>
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Talhão</DialogTitle>
               <DialogDescription>
-                Preencha as informações do novo talhão.
+                Preencha as informações do novo talhão e desenhe seu perímetro no mapa.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                    Nome
-                    </Label>
-                    <Input
-                    id="name"
-                    value={newPlot.name}
-                    onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
-                    className="col-span-3"
-                    placeholder="Ex: Talhão da Estrada"
-                    />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="crop" className="text-right">
-                    Cultura
-                    </Label>
-                    <Input
-                    id="crop"
-                    value={newPlot.crop}
-                    onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
-                    className="col-span-3"
-                    placeholder="Ex: Soja"
-                    />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="area" className="text-right">
-                    Área (ha)
-                    </Label>
-                    <Input
-                    id="area"
-                    type="number"
-                    value={newPlot.area}
-                    onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
-                    className="col-span-3"
-                    placeholder="Ex: 150"
-                    />
-                </div>
+            <div className="grid md:grid-cols-2 gap-8 py-4">
+              <div className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="name">Nome do Talhão</Label>
+                      <Input
+                      id="name"
+                      value={newPlot.name}
+                      onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
+                      placeholder="Ex: Talhão da Estrada"
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="crop">Cultura</Label>
+                      <Input
+                      id="crop"
+                      value={newPlot.crop}
+                      onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
+                      placeholder="Ex: Soja"
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="area">Área (ha)</Label>
+                      <Input
+                      id="area"
+                      type="number"
+                      value={newPlot.area}
+                      onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
+                      placeholder="Ex: 150"
+                      />
+                  </div>
+              </div>
+              <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
+                {isDialogOpen && <MapDisplay />}
+              </div>
             </div>
             <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
               <Button onClick={handleAddPlot}>Salvar Talhão</Button>
             </DialogFooter>
           </DialogContent>

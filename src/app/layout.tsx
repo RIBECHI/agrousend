@@ -6,6 +6,7 @@ import { MainNav } from '@/components/layout/main-nav';
 import { UserNav } from '@/components/layout/user-nav';
 import { Toaster } from '@/components/ui/toaster';
 import { Leaf } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
 export const metadata: Metadata = {
   title: 'AgroUs - A Rede Social do Agro',
