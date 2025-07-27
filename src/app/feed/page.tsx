@@ -39,6 +39,7 @@ export default function FeedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
@@ -51,7 +52,7 @@ export default function FeedPage() {
     });
 
     return () => unsubscribePosts();
-  }, []);
+  }, [user]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
