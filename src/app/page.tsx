@@ -30,7 +30,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'Erro ao entrar',
-        description: error.message,
+        description: 'Verifique suas credenciais e tente novamente.',
       });
     } finally {
       setIsLoading(false);
@@ -68,6 +68,7 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
+                  placeholder="Sua senha"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
