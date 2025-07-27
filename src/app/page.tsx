@@ -11,7 +11,7 @@ import { useRef, useState, useEffect } from 'react';
 import app from '@/lib/firebase';
 import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInAnonymously, onAuthStateChanged, User } from "firebase/auth";
 
 
 interface Post {
@@ -38,26 +38,27 @@ export default function Home() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
 
   const db = getFirestore(app);
   const storage = getStorage(app);
   const auth = getAuth(app);
 
   useEffect(() => {
-    onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         // User is signed in.
+        setCurrentUser(user);
         console.log('User signed in anonymously:', user.uid);
       } else {
         // User is signed out.
-        signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous sign-in error:", error);
-        });
+        setCurrentUser(null);
       }
     });
     
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -70,10 +71,12 @@ export default function Home() {
       setPosts(postsData);
     }, (error) => {
         console.error("Error fetching posts: ", error);
-        // Em um app real, você poderia mostrar um toast para o usuário
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribePosts();
+    }
   }, [db, auth]);
 
 
@@ -96,7 +99,7 @@ export default function Home() {
 
   const removeMedia = () => {
     if (mediaPreview) {
-      // A URL do objeto não precisa mais ser revogada manualmente aqui
+      URL.revokeObjectURL(mediaPreview.url);
     }
     setMediaPreview(null);
     setMediaFile(null);
@@ -108,19 +111,20 @@ export default function Home() {
   const handlePublish = async () => {
     if (!postContent && !mediaFile) return;
 
-    // Garante que o usuário esteja logado anonimamente antes de publicar
-    if (!auth.currentUser) {
-        alert("Autenticação necessária. Por favor, aguarde e tente novamente.");
-        console.error("Usuário não autenticado.");
-        return;
-    }
-
     try {
+        let user = auth.currentUser;
+        // If user is not logged in, sign in anonymously and wait for it.
+        if (!user) {
+            const userCredential = await signInAnonymously(auth);
+            user = userCredential.user;
+            console.log("Signed in anonymously to publish:", user.uid);
+        }
+
         const postData: any = {
           author: {
             name: 'Usuário Anônimo',
             avatar: 'https://placehold.co/40x40.png',
-            handle: `@user${auth.currentUser.uid.substring(0, 5)}`,
+            handle: `@user${user.uid.substring(0, 5)}`,
           },
           content: postContent,
           likes: 0,
@@ -130,7 +134,7 @@ export default function Home() {
         };
 
         if (mediaFile) {
-            const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
+            const storageRef = ref(storage, `posts/${user.uid}/${mediaFile.name}_${Date.now()}`);
             await uploadBytes(storageRef, mediaFile);
             const mediaUrl = await getDownloadURL(storageRef);
             const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
@@ -158,13 +162,14 @@ export default function Home() {
     if (!timestamp) return 'agora';
   
     let date: Date;
+    // Check if it's already a Firebase Timestamp object
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
     } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
-      // Isso lida com o objeto retornado do Firestore que ainda não foi convertido para um objeto Timestamp
+      // Handle the object format that comes from Firestore before conversion
       date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
     } else {
-      // Retorno para casos onde o timestamp pode ser inválido ou ainda não definido pelo servidor
+      // Fallback for serverTimestamp() which might not be resolved yet
       return 'enviando...';
     }
   
@@ -229,6 +234,7 @@ export default function Home() {
                           ref={fileInputRef}
                           onChange={handleFileChange}
                           className="hidden"
+                          accept="image/*,video/*"
                         />
                         <Button variant="ghost" size="icon" onClick={() => handleMediaButtonClick('image/*')}>
                             <ImagePlus className="h-5 w-5 text-muted-foreground" />
