@@ -10,7 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Map } from 'lucide-react';
+import Image from 'next/image';
 
 const initialPlots = [
   {
@@ -69,7 +70,7 @@ export default function FarmsPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
-          <p className="text-muted-foreground">Gerencie os talhões da sua fazenda.</p>
+          <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -131,50 +132,72 @@ export default function FarmsPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome do Talhão</TableHead>
-                <TableHead>Cultura</TableHead>
-                <TableHead>Área</TableHead>
-                <TableHead>Status Atual</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {plots.map((plot) => (
-                <TableRow key={plot.id}>
-                  <TableCell className="font-medium">{plot.name}</TableCell>
-                  <TableCell>{plot.crop}</TableCell>
-                  <TableCell>{plot.area}</TableCell>
-                  <TableCell>
-                    <Badge variant={plot.status === 'Colheita' ? 'default' : 'secondary'}>
-                      {plot.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Excluir</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="lg:col-span-1 h-[600px]">
+           <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Map className="h-5 w-5"/> Mapa da Fazenda</CardTitle>
+            <CardDescription>Visualize e desenhe o perímetro dos seus talhões.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[500px] w-full bg-secondary rounded-b-lg">
+             <Image 
+                src="https://placehold.co/800x600.png" 
+                alt="Mapa da fazenda" 
+                className="w-full h-full object-cover rounded-md"
+                width={800}
+                height={600}
+                data-ai-hint="satellite farm map"
+             />
+          </CardContent>
+        </Card>
+        
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Lista de Talhões</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Cultura</TableHead>
+                  <TableHead>Área</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {plots.map((plot) => (
+                  <TableRow key={plot.id}>
+                    <TableCell className="font-medium">{plot.name}</TableCell>
+                    <TableCell>{plot.crop}</TableCell>
+                    <TableCell>{plot.area}</TableCell>
+                    <TableCell>
+                      <Badge variant={plot.status === 'Colheita' ? 'default' : 'secondary'}>
+                        {plot.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>Ver no Mapa</DropdownMenuItem>
+                          <DropdownMenuItem>Editar</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">Excluir</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
