@@ -80,9 +80,6 @@ export default function Home() {
   };
 
   const removeMedia = () => {
-    if (mediaPreview) {
-      URL.revokeObjectURL(mediaPreview.url);
-    }
     setMediaPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -93,7 +90,7 @@ export default function Home() {
     if (!postContent && !mediaPreview) return;
 
     const newPost = {
-      id: posts.length + 1,
+      id: posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1,
       author: {
         name: 'Você',
         avatar: 'https://placehold.co/40x40.png',
