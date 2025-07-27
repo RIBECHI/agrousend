@@ -50,6 +50,7 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [mapRenderKey, setMapRenderKey] = useState(0);
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -66,6 +67,11 @@ export default function FarmsPage() {
       setIsDialogOpen(false);
     }
   };
+
+  const openDialog = () => {
+    setMapRenderKey(prevKey => prevKey + 1); // Change key to force re-render
+    setIsDialogOpen(true);
+  }
   
   return (
     <div className="container mx-auto">
@@ -74,7 +80,7 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
           <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
-        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
+        <Button size="lg" onClick={openDialog}>
           <PlusCircle className="mr-2 h-5 w-5" />
           Adicionar Novo Talhão
         </Button>
@@ -119,7 +125,7 @@ export default function FarmsPage() {
                   </div>
               </div>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
-                {isDialogOpen && <MapDisplay />}
+                {isDialogOpen && <MapDisplay key={mapRenderKey} />}
               </div>
             </div>
             <DialogFooter>
