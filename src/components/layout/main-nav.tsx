@@ -17,6 +17,7 @@ import {
   Warehouse,
   ChevronDown,
   Settings,
+  LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { useState } from 'react';
 
 const topLevelNavItems = [
   { href: '/', label: 'Feed', icon: Home },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/market', label: 'Anúncios Rurais', icon: Newspaper },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/forum', label: 'Fórum', icon: MessagesSquare },
