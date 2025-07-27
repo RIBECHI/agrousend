@@ -30,7 +30,7 @@ interface Post {
 }
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth(); // Not checking loading, AppLayout handles it
   
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
@@ -40,21 +40,20 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user) {
-      const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
-      const unsubscribePosts = onSnapshot(q, (snapshot) => {
-        const postsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Post[];
-        setPosts(postsData);
-      }, (error) => {
-        console.error("Error fetching posts: ", error);
-      });
-  
-      return () => unsubscribePosts();
-    }
-  }, [user]);
+    // We can safely assume user is available here because AppLayout protects this page
+    const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
+    const unsubscribePosts = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Post[];
+      setPosts(postsData);
+    }, (error) => {
+      console.error("Error fetching posts: ", error);
+    });
+
+    return () => unsubscribePosts();
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -73,7 +72,7 @@ export default function Home() {
   }
 
   const handlePublish = async () => {
-    if (!user) {
+    if (!user) { // This check is mostly for safety, should not be hit
       alert("Você precisa estar logado para publicar.");
       return;
     }
@@ -148,18 +147,13 @@ export default function Home() {
     const diffDays = Math.round(diffHours / 24);
     return `${diffDays}d`;
   }
-
-  // This check is now handled by the AppLayout, but kept here for safety.
-  if (loading || !user) {
-    return null; // Or a minimal loader
-  }
-
+  
   return (
     <div className="container mx-auto max-w-2xl">
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={isPublishing}>
+            <fieldset disabled={isPublishing || !user}>
               <div className="flex gap-4">
                 <Avatar>
                   <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
@@ -167,7 +161,7 @@ export default function Home() {
                 </Avatar>
                 <div className="w-full">
                   <Textarea 
-                    placeholder={`No que você está pensando, ${user.displayName}?`}
+                    placeholder={user ? `No que você está pensando, ${user.displayName}?` : 'Carregando...'}
                     className="mb-2 bg-secondary border-none"
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
@@ -241,3 +235,4 @@ export default function Home() {
     </div>
   );
 }
+

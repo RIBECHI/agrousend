@@ -13,7 +13,7 @@ export default function RootPage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        router.replace('/');
+        router.replace('/feed');
       } else {
         router.replace('/login');
       }

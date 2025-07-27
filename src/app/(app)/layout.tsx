@@ -45,15 +45,17 @@ export default function AppLayout({
             <MainNav />
             </div>
         </Sidebar>
-        <div className="flex-1 flex flex-col">
-            <header className="flex h-16 items-center justify-between border-b px-6">
-            <SidebarTrigger />
-            <UserNav />
-            </header>
-            <main className="flex-1 overflow-y-auto p-6">
-                {children}
-            </main>
-        </div>
+        <SidebarInset>
+          <div className="flex-1 flex flex-col h-full">
+              <header className="flex h-16 items-center justify-between border-b px-6 bg-card">
+              <SidebarTrigger />
+              <UserNav />
+              </header>
+              <main className="flex-1 overflow-y-auto p-6">
+                  {children}
+              </main>
+          </div>
+        </SidebarInset>
     </SidebarProvider>
   );
 }

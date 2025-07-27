@@ -25,7 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useState } from 'react';
 
 const topLevelNavItems = [
-  { href: '/', label: 'Feed', icon: Home },
+  { href: '/feed', label: 'Feed', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/market', label: 'Anúncios Rurais', icon: Newspaper },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
