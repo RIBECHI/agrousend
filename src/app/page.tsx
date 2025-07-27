@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef } from 'react';
-import { firestore, storage } from '@/lib/firebase';
+import { firestore, storage, auth } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, Timestamp, DocumentData } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
@@ -80,7 +80,12 @@ export default function Home() {
     }
   }
 
-  const handlePublish = async (currentUser: User) => {
+  const handlePublish = async (currentUser: User | null) => {
+    if (!currentUser) {
+        alert("Você precisa estar logado para publicar.");
+        return;
+    }
+
     if (!postContent.trim() && !postMedia) {
         alert("A publicação não pode estar vazia.");
         return;
@@ -89,15 +94,7 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
-      let imageUrl: string | undefined = undefined;
-      
-      if (postMedia) {
-        const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${postMedia.name}`);
-        const uploadResult = await uploadBytes(storageRef, postMedia);
-        imageUrl = await getDownloadURL(uploadResult.ref);
-      }
-      
-      const newPostData: DocumentData = {
+      const postData: DocumentData = {
         author: {
           uid: currentUser.uid,
           name: currentUser.displayName || 'Usuário Anônimo',
@@ -109,12 +106,14 @@ export default function Home() {
         shares: 0,
         timestamp: new Date(),
       };
-
-      if (imageUrl) {
-        newPostData.imageUrl = imageUrl;
+      
+      if (postMedia) {
+        const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${postMedia.name}`);
+        const uploadResult = await uploadBytes(storageRef, postMedia);
+        postData.imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      await addDoc(collection(firestore, "posts"), newPostData);
+      await addDoc(collection(firestore, "posts"), postData);
 
       setPostContent('');
       removeMedia();
@@ -153,7 +152,7 @@ export default function Home() {
     return `${diffDays}d`;
   }
 
-  if (loading || !user) {
+  if (loading) {
     return <div className="flex justify-center items-center h-full">Carregando...</div>;
   }
 
@@ -162,11 +161,11 @@ export default function Home() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={isPublishing}>
+            <fieldset disabled={!user || isPublishing}>
               <div className="flex gap-4">
                 <Avatar>
-                  <AvatarImage src={user.photoURL || 'https://placehold.co/40x40.png'} />
-                  <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
+                  <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="w-full">
                   <Textarea 
