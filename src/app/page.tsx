@@ -109,10 +109,11 @@ export default function Home() {
   };
 
   const handlePublish = async () => {
-    if ((!postContent && !mediaFile) || !user) {
-        alert("Você precisa estar conectado e ter conteúdo para publicar.");
+    if (!user) {
+        alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
         return;
-    };
+    }
+    if (!postContent && !mediaFile) return;
 
     setIsPublishing(true);
 
@@ -132,7 +133,7 @@ export default function Home() {
       
       if (mediaFile) {
         const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
+        const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${mediaFile.name}`);
         const uploadResult = await uploadBytes(storageRef, mediaFile);
         const mediaUrl = await getDownloadURL(uploadResult.ref);
         
@@ -150,7 +151,7 @@ export default function Home() {
       removeMedia();
     } catch (error) {
         console.error("Erro ao publicar:", error);
-        alert(`Ocorreu um erro ao publicar: ${error.message}. A causa mais provável é a configuração das Regras de Segurança no Firebase.`);
+        alert(`Ocorreu um erro ao publicar: ${error}`);
     } finally {
         setIsPublishing(false);
     }
@@ -192,14 +193,14 @@ export default function Home() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <div className="flex gap-4">
+            <fieldset disabled={!user || isPublishing} className="flex gap-4">
               <Avatar>
                 <AvatarImage src="https://placehold.co/40x40.png" />
                 <AvatarFallback>EU</AvatarFallback>
               </Avatar>
               <div className="w-full">
                 <Textarea 
-                  placeholder="No que você está pensando, produtor?" 
+                  placeholder={!user ? "Autenticando..." : "No que você está pensando, produtor?"}
                   className="mb-2 bg-secondary border-none"
                   value={postContent}
                   onChange={(e) => setPostContent(e.target.value)}
@@ -248,7 +249,7 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </fieldset>
           </CardContent>
         </Card>
         
@@ -305,4 +306,5 @@ export default function Home() {
       </div>
     </div>
   );
-}
+
+    
