@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useRef, useState, useEffect } from 'react';
-import { firestore, storage } from '@/lib/firebase';
+import { firestore, storage, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 
 interface Post {
   id: string;
@@ -37,9 +38,25 @@ export default function Home() {
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
 
   useEffect(() => {
+    // Listener for authentication state
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        try {
+          const userCredential = await signInAnonymously(auth);
+          setUser(userCredential.user);
+        } catch (error) {
+          console.error("Error signing in anonymously:", error);
+        }
+      }
+    });
+
+    // Listener for posts
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
@@ -57,6 +74,7 @@ export default function Home() {
     });
 
     return () => {
+      unsubscribeAuth();
       unsubscribePosts();
     }
   }, []);
@@ -91,26 +109,19 @@ export default function Home() {
   };
 
   const handlePublish = async () => {
-    if (!postContent && !mediaFile) return;
+    if ((!postContent && !mediaFile) || !user) {
+        alert("Você precisa estar conectado e ter conteúdo para publicar.");
+        return;
+    };
 
     setIsPublishing(true);
 
     try {
-      let mediaUrl = null;
-      let mediaType: 'image' | 'video' | null = null;
-      
-      if (mediaFile) {
-        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, mediaFile);
-        mediaUrl = await getDownloadURL(uploadResult.ref);
-      }
-
       const postData: any = {
         author: {
           name: 'Usuário Anônimo',
           avatar: 'https://placehold.co/40x40.png',
-          handle: `@user${Math.random().toString(36).substring(2, 7)}`,
+          handle: `@user${user.uid.substring(0, 5)}`,
         },
         content: postContent,
         likes: 0,
@@ -118,8 +129,13 @@ export default function Home() {
         shares: 0,
         timestamp: serverTimestamp(),
       };
-
-      if (mediaUrl) {
+      
+      if (mediaFile) {
+        const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, mediaFile);
+        const mediaUrl = await getDownloadURL(uploadResult.ref);
+        
         if (mediaType === 'image') {
           postData.image = mediaUrl;
           postData.imageHint = 'new post';
@@ -134,7 +150,7 @@ export default function Home() {
       removeMedia();
     } catch (error) {
         console.error("Erro ao publicar:", error);
-        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes. A causa mais provável é a configuração das Regras de Segurança no Firebase Storage.");
+        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes. A causa mais provável é a configuração das Regras de Segurança no Firebase.");
     } finally {
         setIsPublishing(false);
     }
@@ -144,11 +160,16 @@ export default function Home() {
     if (!timestamp) return 'agora';
   
     let date: Date;
+    // Check if it's a Firestore Timestamp object
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
-    } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
+    } 
+    // Check for the structure Firestore sends for pending timestamps
+    else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
       date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
-    } else {
+    } 
+    // If it's still null or not a valid format, it might be a pending write
+    else {
       return 'enviando...';
     }
   
@@ -222,7 +243,9 @@ export default function Home() {
                             <Video className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </div>
-                  <Button onClick={handlePublish} disabled={isPublishing}>{isPublishing ? 'Publicando...' : 'Publicar'}</Button>
+                  <Button onClick={handlePublish} disabled={!user || isPublishing}>
+                    {isPublishing ? 'Publicando...' : 'Publicar'}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -283,3 +306,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
