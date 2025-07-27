@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef } from 'react';
-import { firestore, storage, auth } from '@/lib/firebase';
+import { firestore, storage } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, Timestamp, DocumentData } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
@@ -42,12 +42,14 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Redireciona se o carregamento terminou e não há usuário
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
   
   useEffect(() => {
+    // Busca os posts apenas se houver um usuário logado
     if (user) {
       const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
       const unsubscribePosts = onSnapshot(q, (snapshot) => {
@@ -80,12 +82,7 @@ export default function Home() {
     }
   }
 
-  const handlePublish = async (currentUser: User | null) => {
-    if (!currentUser) {
-        alert("Você precisa estar logado para publicar.");
-        return;
-    }
-
+  const handlePublish = async (currentUser: User) => {
     if (!postContent.trim() && !postMedia) {
         alert("A publicação não pode estar vazia.");
         return;
@@ -94,6 +91,16 @@ export default function Home() {
     setIsPublishing(true);
 
     try {
+      let imageUrl: string | undefined = undefined;
+      
+      // 1. Faz o upload da imagem (se houver)
+      if (postMedia) {
+        const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${postMedia.name}`);
+        const uploadResult = await uploadBytes(storageRef, postMedia);
+        imageUrl = await getDownloadURL(uploadResult.ref);
+      }
+      
+      // 2. Cria o objeto do post
       const postData: DocumentData = {
         author: {
           uid: currentUser.uid,
@@ -107,14 +114,15 @@ export default function Home() {
         timestamp: new Date(),
       };
       
-      if (postMedia) {
-        const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${postMedia.name}`);
-        const uploadResult = await uploadBytes(storageRef, postMedia);
-        postData.imageUrl = await getDownloadURL(uploadResult.ref);
+      // 3. Adiciona a URL da imagem apenas se ela existir
+      if (imageUrl) {
+        postData.imageUrl = imageUrl;
       }
-      
+
+      // 4. Salva o post no Firestore
       await addDoc(collection(firestore, "posts"), postData);
 
+      // 5. Limpa o formulário
       setPostContent('');
       removeMedia();
 
@@ -123,6 +131,7 @@ export default function Home() {
       const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
       alert(`Ocorreu um erro ao publicar: ${errorMessage}`);
     } finally {
+      // 6. Garante que o estado de publicação seja resetado
       setIsPublishing(false);
     }
   };
@@ -152,6 +161,7 @@ export default function Home() {
     return `${diffDays}d`;
   }
 
+  // Mostra um estado de carregamento enquanto a autenticação é verificada
   if (loading) {
     return <div className="flex justify-center items-center h-full">Carregando...</div>;
   }
@@ -161,15 +171,17 @@ export default function Home() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
+            {/* O Fieldset garante que nada seja clicável antes do login */}
             <fieldset disabled={!user || isPublishing}>
               <div className="flex gap-4">
                 <Avatar>
+                  {/* Usa dados do usuário logado ou um fallback */}
                   <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
                   <AvatarFallback>{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="w-full">
                   <Textarea 
-                    placeholder="No que você está pensando, produtor?"
+                    placeholder={user ? `No que você está pensando, ${user.displayName}?` : "Carregando..."}
                     className="mb-2 bg-secondary border-none"
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
@@ -190,7 +202,7 @@ export default function Home() {
                     </Button>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
 
-                    <Button onClick={() => handlePublish(user)} disabled={isPublishing}>
+                    <Button onClick={() => handlePublish(user!)} disabled={isPublishing || !user}>
                       {isPublishing ? 'Publicando...' : 'Publicar'}
                     </Button>
                   </div>
