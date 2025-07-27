@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -32,7 +33,9 @@ export default function RootLayout({
                   <Leaf className="h-8 w-8 text-primary" />
                   <span className="ml-2 text-xl font-bold text-primary">AgroUs</span>
                 </div>
-                <MainNav />
+                <div className="flex-1 overflow-y-auto">
+                    <MainNav />
+                </div>
               </div>
             </Sidebar>
             <SidebarInset className="flex-1 flex flex-col">
