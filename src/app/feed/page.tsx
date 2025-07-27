@@ -151,7 +151,8 @@ export default function FeedPage() {
   }
 
   if (loading) {
-    return null; // Don't render anything while loading to avoid flashes of content
+    // We show the AppLayout's loading indicator, so we can return null here.
+    return null;
   }
 
   if (!user) {
