@@ -8,11 +8,9 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, ImagePlus, Video, X } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useRef, useState, useEffect } from 'react';
-import app from '@/lib/firebase';
-import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getAuth, signInAnonymously, onAuthStateChanged, User } from "firebase/auth";
-
+import { firestore, storage } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface Post {
   id: string;
@@ -38,27 +36,11 @@ export default function Home() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-
-  const db = getFirestore(app);
-  const storage = getStorage(app);
-  const auth = getAuth(app);
 
   useEffect(() => {
-    // We can still listen for auth changes for future use, but it won't block publishing.
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user);
-      } else {
-        // If not logged in, try to log in anonymously once.
-        signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous sign-in failed:", error);
-        });
-      }
-    });
-
-    const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+    const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
       querySnapshot.forEach((doc) => {
@@ -75,10 +57,9 @@ export default function Home() {
     });
 
     return () => {
-      unsubscribeAuth();
       unsubscribePosts();
     }
-  }, [db, auth]);
+  }, []);
 
 
   const handleMediaButtonClick = (accept: string) => {
@@ -112,43 +93,50 @@ export default function Home() {
   const handlePublish = async () => {
     if (!postContent && !mediaFile) return;
 
+    setIsPublishing(true);
+
     try {
-        const postData: any = {
-          author: {
-            name: currentUser?.isAnonymous ? 'Usuário Anônimo' : 'Usuário',
-            avatar: 'https://placehold.co/40x40.png',
-            handle: `@user${currentUser ? currentUser.uid.substring(0, 5) : '12345'}`,
-          },
-          content: postContent,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          timestamp: serverTimestamp(),
-        };
+      let mediaUrl = null;
+      let mediaType: 'image' | 'video' | null = null;
+      
+      if (mediaFile) {
+        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
+        const uploadResult = await uploadBytes(storageRef, mediaFile);
+        mediaUrl = await getDownloadURL(uploadResult.ref);
+      }
 
-        if (mediaFile) {
-            // The storage path does not need user information if rules are public
-            const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
-            await uploadBytes(storageRef, mediaFile);
-            const mediaUrl = await getDownloadURL(storageRef);
-            const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+      const postData: any = {
+        author: {
+          name: 'Usuário Anônimo',
+          avatar: 'https://placehold.co/40x40.png',
+          handle: `@user${Math.random().toString(36).substring(2, 7)}`,
+        },
+        content: postContent,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        timestamp: serverTimestamp(),
+      };
 
-            if (mediaType === 'image') {
-              postData.image = mediaUrl;
-              postData.imageHint = 'new post';
-            } else if (mediaType === 'video') {
-              postData.video = mediaUrl;
-            }
+      if (mediaUrl) {
+        if (mediaType === 'image') {
+          postData.image = mediaUrl;
+          postData.imageHint = 'new post';
+        } else if (mediaType === 'video') {
+          postData.video = mediaUrl;
         }
+      }
 
+      await addDoc(collection(firestore, "posts"), postData);
 
-        await addDoc(collection(db, "posts"), postData);
-
-        setPostContent('');
-        removeMedia();
+      setPostContent('');
+      removeMedia();
     } catch (error) {
-        console.error("Error publishing post: ", error);
-        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes.");
+        console.error("Erro ao publicar:", error);
+        alert("Ocorreu um erro ao publicar. Verifique o console para mais detalhes. A causa mais provável é a configuração das Regras de Segurança no Firebase Storage.");
+    } finally {
+        setIsPublishing(false);
     }
   };
   
@@ -234,7 +222,7 @@ export default function Home() {
                             <Video className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </div>
-                  <Button onClick={handlePublish}>Publicar</Button>
+                  <Button onClick={handlePublish} disabled={isPublishing}>{isPublishing ? 'Publicando...' : 'Publicar'}</Button>
                 </div>
               </div>
             </div>
