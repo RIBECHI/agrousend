@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -14,6 +14,10 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import dynamic from 'next/dynamic';
+
+const MapWithDraw = dynamic(() => import('@/components/map-with-draw'), {
+  ssr: false,
+});
 
 const initialPlots = [
   {
@@ -51,11 +55,6 @@ export default function FarmsPage() {
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const MapContainer = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false }), []);
-  const TileLayer = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false }), []);
-  const FeatureGroup = useMemo(() => dynamic(() => import('react-leaflet').then(mod => mod.FeatureGroup), { ssr: false }), []);
-  const EditControl = useMemo(() => dynamic(() => import('react-leaflet-draw').then(mod => mod.EditControl), { ssr: false }), []);
-
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
       setPlots([
@@ -72,11 +71,6 @@ export default function FarmsPage() {
     }
   };
   
-  const onCreated = (e: any) => {
-    const { layer } = e;
-    console.log('Polygon created:', layer.toGeoJSON());
-  };
-
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -139,30 +133,7 @@ export default function FarmsPage() {
                     </div>
                 </div>
                  <div className="h-[400px] w-full bg-secondary rounded-lg">
-                    <MapContainer
-                        center={[-15.77972, -47.92972]}
-                        zoom={4}
-                        style={{ height: '100%', width: '100%' }}
-                    >
-                        <TileLayer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        />
-                         <FeatureGroup>
-                            <EditControl
-                                position="topright"
-                                onCreated={onCreated}
-                                draw={{
-                                    rectangle: false,
-                                    polygon: true,
-                                    circle: false,
-                                    circlemarker: false,
-                                    marker: false,
-                                    polyline: false,
-                                }}
-                            />
-                        </FeatureGroup>
-                    </MapContainer>
+                    {isDialogOpen && <MapWithDraw />}
                 </div>
             </div>
             <DialogFooter>
