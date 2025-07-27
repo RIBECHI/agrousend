@@ -81,7 +81,7 @@ export default function Home() {
 
   const removeMedia = () => {
     if (mediaPreview) {
-      // Deixar o navegador gerenciar a revogação do object URL
+      // O navegador gerencia a revogação do object URL
     }
     setMediaPreview(null);
     setMediaFile(null);
@@ -97,29 +97,35 @@ export default function Home() {
         let mediaUrl = '';
         let mediaType: 'image' | 'video' | undefined = undefined;
 
-        if (mediaFile) {
-            const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
-            await uploadBytes(storageRef, mediaFile);
-            mediaUrl = await getDownloadURL(storageRef);
-            mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
-        }
-
-
-        await addDoc(collection(db, "posts"), {
+        const postData: any = {
           author: {
             name: 'Você (Usuário Teste)',
             avatar: 'https://placehold.co/40x40.png',
             handle: '@voce',
           },
           content: postContent,
-          image: mediaType === 'image' ? mediaUrl : undefined,
-          video: mediaType === 'video' ? mediaUrl : undefined,
-          imageHint: 'new post',
           likes: 0,
           comments: 0,
           shares: 0,
           timestamp: serverTimestamp(),
-        });
+        };
+
+        if (mediaFile) {
+            const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
+            await uploadBytes(storageRef, mediaFile);
+            mediaUrl = await getDownloadURL(storageRef);
+            mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+
+            if (mediaType === 'image') {
+              postData.image = mediaUrl;
+              postData.imageHint = 'new post';
+            } else if (mediaType === 'video') {
+              postData.video = mediaUrl;
+            }
+        }
+
+
+        await addDoc(collection(db, "posts"), postData);
 
         setPostContent('');
         removeMedia();
@@ -136,10 +142,8 @@ export default function Home() {
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
     } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
-      // Lida com o formato de objeto que pode vir do Firestore antes de ser convertido
       date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
     } else {
-      // Fallback para caso o timestamp já seja um objeto Date ou um formato inesperado
       return 'agora';
     }
   
