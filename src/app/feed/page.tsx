@@ -151,7 +151,6 @@ export default function FeedPage() {
   }
 
   if (loading) {
-    // We show the AppLayout's loading indicator, so we can return null here.
     return null;
   }
 

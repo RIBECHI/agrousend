@@ -32,7 +32,6 @@ export default function LoginPage() {
         title: 'Erro ao entrar',
         description: 'Verifique suas credenciais e tente novamente.',
       });
-    } finally {
       setIsLoading(false);
     }
   };
