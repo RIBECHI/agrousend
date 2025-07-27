@@ -12,6 +12,7 @@ import { collection, addDoc, onSnapshot, query, orderBy, Timestamp, DocumentData
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/auth-context';
+import { X } from 'lucide-react';
 
 interface Post {
   id: string;
@@ -39,6 +40,7 @@ export default function FeedPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // We will only attempt to fetch posts if the user is logged in.
     if (!user) return;
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
@@ -72,6 +74,7 @@ export default function FeedPage() {
 
   const handlePublish = async () => {
     if (!user) { 
+      // This should ideally not be reached if the UI is disabled correctly
       alert("Você precisa estar logado para publicar.");
       return;
     }
@@ -104,6 +107,7 @@ export default function FeedPage() {
         timestamp: new Date(),
       };
       
+      // Only add imageUrl to the document if it exists.
       if (imageUrl) {
         postData.imageUrl = imageUrl;
       }
@@ -160,7 +164,7 @@ export default function FeedPage() {
                 </Avatar>
                 <div className="w-full">
                   <Textarea 
-                    placeholder={user ? `No que você está pensando, ${user.displayName}?` : 'Carregando...'}
+                    placeholder={user ? `No que você está pensando, ${user.displayName}?` : 'Faça login para publicar...'}
                     className="mb-2 bg-secondary border-none"
                     value={postContent}
                     onChange={(e) => setPostContent(e.target.value)}
@@ -170,7 +174,7 @@ export default function FeedPage() {
                     <div className="relative mt-2">
                       <Image src={postMediaPreview} alt="Preview" width={500} height={300} className="rounded-lg w-full h-auto object-cover" />
                       <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={removeMedia}>
-                        <MoreHorizontal className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
