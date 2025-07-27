@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Post {
   id: string;
@@ -36,6 +37,7 @@ export default function FeedPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        if (!user) return;
         const postsCollection = collection(firestore, 'posts');
         const q = query(postsCollection, orderBy('createdAt', 'desc'));
 
@@ -45,10 +47,12 @@ export default function FeedPage() {
                 ...doc.data()
             } as Post));
             setPosts(fetchedPosts);
+        }, (error) => {
+            console.error("Erro ao buscar posts: ", error);
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [user]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -60,6 +64,9 @@ export default function FeedPage() {
 
     const removeImage = () => {
         setImageFile(null);
+        if (imagePreview) {
+            URL.revokeObjectURL(imagePreview);
+        }
         setImagePreview(null);
         if(fileInputRef.current) {
             fileInputRef.current.value = '';
@@ -70,7 +77,7 @@ export default function FeedPage() {
         if ((!newPost.trim() && !imageFile) || !user) return;
 
         setIsPosting(true);
-        let imageUrl: string | null = null;
+        let imageUrl: string | undefined = undefined;
 
         try {
             if (imageFile) {
@@ -97,7 +104,24 @@ export default function FeedPage() {
     };
 
     if (loading) {
-        return <div>Carregando...</div>;
+        return (
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-48" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-24 w-full" />
+                        </CardContent>
+                        <CardFooter className="flex justify-between items-center">
+                            <Skeleton className="h-10 w-10" />
+                            <Skeleton className="h-10 w-24" />
+                        </CardFooter>
+                    </Card>
+                </div>
+             </div>
+        )
     }
 
     if (!user) {
@@ -172,7 +196,7 @@ export default function FeedPage() {
                         <CardHeader>
                             <div className="flex items-center gap-3">
                                 <Avatar>
-                                    <AvatarImage src={post.authorPhotoURL || 'https://placehold.co/40x40.png'} alt={post.authorName} />
+                                    <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
                                     <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                                 <div>
@@ -221,4 +245,5 @@ export default function FeedPage() {
         </aside>
     </div>
   );
-}
+
+    
