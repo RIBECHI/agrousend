@@ -54,6 +54,7 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [mapKey, setMapKey] = useState(Date.now()); // State for the map key
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -70,6 +71,11 @@ export default function FarmsPage() {
       setIsDialogOpen(false);
     }
   };
+
+  const handleOpenDialog = () => {
+    setMapKey(Date.now()); // Change the key every time the dialog opens
+    setIsDialogOpen(true);
+  }
   
   return (
     <div className="container mx-auto">
@@ -78,11 +84,12 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
           <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
-        <Button size="lg" onClick={() => setIsDialogOpen(true)}>
+        <Button size="lg" onClick={handleOpenDialog}>
           <PlusCircle className="mr-2 h-5 w-5" />
           Adicionar Novo Talhão
         </Button>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      </div>
+       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Adicionar Novo Talhão</DialogTitle>
@@ -131,7 +138,7 @@ export default function FarmsPage() {
                     </div>
                 </div>
                 <div className="h-[400px] w-full bg-secondary rounded-lg">
-                  <MapWithDraw open={isDialogOpen} />
+                  {isDialogOpen && <MapWithDraw key={mapKey} />}
                 </div>
             </div>
             <DialogFooter>
@@ -139,7 +146,6 @@ export default function FarmsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
 
         <Card>
           <CardHeader>
