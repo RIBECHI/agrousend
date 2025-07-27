@@ -7,18 +7,19 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, ThumbsUp, Share2, MoreHorizontal, Image as ImageIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect, useRef } from 'react';
-import { firestore, auth, storage } from '@/lib/firebase';
+import { firestore, storage } from '@/lib/firebase';
 import { collection, addDoc, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 
 interface Post {
   id: string;
   author: {
+    uid: string;
     name: string;
     avatar: string;
-    handle: string;
   };
   content: string;
   imageUrl?: string;
@@ -29,46 +30,38 @@ interface Post {
 }
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
   const [postMedia, setPostMedia] = useState<File | null>(null);
   const [postMediaPreview, setPostMediaPreview] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 1. Monitorar o estado de autenticação
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        try {
-          const userCredential = await signInAnonymously(auth);
-          setUser(userCredential.user);
-        } catch (error) {
-          console.error("Error signing in anonymously:", error);
-        }
-      }
-    });
-
-    // 2. Buscar os posts
-    const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
-    const unsubscribePosts = onSnapshot(q, (snapshot) => {
-      const postsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Post[];
-      setPosts(postsData);
-    }, (error) => {
-      console.error("Error fetching posts: ", error);
-    });
-
-    return () => {
-      unsubscribeAuth();
-      unsubscribePosts();
-    };
-  }, []);
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+  
+  useEffect(() => {
+    if (user) {
+      const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
+      const unsubscribePosts = onSnapshot(q, (snapshot) => {
+        const postsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Post[];
+        setPosts(postsData);
+      }, (error) => {
+        console.error("Error fetching posts: ", error);
+      });
+  
+      return () => unsubscribePosts();
+    }
+  }, [user]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -88,7 +81,7 @@ export default function Home() {
 
   const handlePublish = async () => {
     if (!user) {
-      alert("Aguardando autenticação. Por favor, tente novamente em alguns segundos.");
+      alert("Você precisa estar logado para publicar.");
       return;
     }
     if (!postContent.trim() && !postMedia) {
@@ -101,19 +94,17 @@ export default function Home() {
     try {
       let imageUrl: string | undefined = undefined;
 
-      // Upload de mídia se existir
       if (postMedia) {
         const storageRef = ref(storage, `posts/${user.uid}/${Date.now()}_${postMedia.name}`);
         const uploadResult = await uploadBytes(storageRef, postMedia);
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
-
-      // Criar o objeto do post
+      
       const newPost = {
         author: {
-          name: 'Usuário Anônimo',
-          avatar: 'https://placehold.co/40x40.png',
-          handle: `@user${user.uid.substring(0, 5)}`,
+          uid: user.uid,
+          name: user.displayName || 'Usuário',
+          avatar: user.photoURL || 'https://placehold.co/40x40.png',
         },
         content: postContent,
         imageUrl: imageUrl,
@@ -123,10 +114,8 @@ export default function Home() {
         timestamp: new Date(),
       };
 
-      // Salvar no Firestore
       await addDoc(collection(firestore, "posts"), newPost);
 
-      // Limpar formulário
       setPostContent('');
       removeMedia();
 
@@ -164,19 +153,23 @@ export default function Home() {
     return `${diffDays}d`;
   }
 
+  if (loading || !user) {
+    return <div className="flex justify-center items-center h-full">Carregando...</div>;
+  }
+
   return (
     <div className="container mx-auto max-w-2xl">
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={!user || isPublishing} className="flex gap-4">
+            <fieldset disabled={isPublishing} className="flex gap-4">
               <Avatar>
-                <AvatarImage src="https://placehold.co/40x40.png" />
-                <AvatarFallback>EU</AvatarFallback>
+                <AvatarImage src={user.photoURL || 'https://placehold.co/40x40.png'} />
+                <AvatarFallback>{user.displayName?.charAt(0) || 'U'}</AvatarFallback>
               </Avatar>
               <div className="w-full">
                 <Textarea 
-                  placeholder={!user ? "Autenticando..." : "No que você está pensando, produtor?"}
+                  placeholder="No que você está pensando, produtor?"
                   className="mb-2 bg-secondary border-none"
                   value={postContent}
                   onChange={(e) => setPostContent(e.target.value)}
@@ -197,7 +190,7 @@ export default function Home() {
                   </Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*,video/*" className="hidden" />
 
-                  <Button onClick={handlePublish} disabled={!user || isPublishing}>
+                  <Button onClick={handlePublish} disabled={isPublishing}>
                     {isPublishing ? 'Publicando...' : 'Publicar'}
                   </Button>
                 </div>
@@ -215,7 +208,7 @@ export default function Home() {
               </Avatar>
               <div className="flex-1">
                 <p className="font-semibold">{post.author.name}</p>
-                <p className="text-sm text-muted-foreground">{post.author.handle} · {formatTimestamp(post.timestamp)}</p>
+                <p className="text-sm text-muted-foreground">@{post.author.name.toLowerCase().replace(' ', '')} · {formatTimestamp(post.timestamp)}</p>
               </div>
               <Button variant="ghost" size="icon">
                 <MoreHorizontal className="h-5 w-5" />
