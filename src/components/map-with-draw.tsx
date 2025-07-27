@@ -9,7 +9,11 @@ const onCreated = (e: any) => {
   console.log('Polygon created:', layer.toGeoJSON());
 };
 
-const MapWithDraw = () => {
+const MapWithDraw = ({ open }: { open: boolean }) => {
+  if (!open) {
+    return null;
+  }
+
   return (
     <MapContainer
       center={[-15.77972, -47.92972]}

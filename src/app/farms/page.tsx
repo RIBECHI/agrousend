@@ -130,11 +130,9 @@ export default function FarmsPage() {
                         />
                     </div>
                 </div>
-                {isDialogOpen && (
-                  <div className="h-[400px] w-full bg-secondary rounded-lg">
-                      <MapWithDraw />
-                  </div>
-                )}
+                <div className="h-[400px] w-full bg-secondary rounded-lg">
+                  <MapWithDraw open={isDialogOpen} />
+                </div>
             </div>
             <DialogFooter>
               <Button onClick={handleAddPlot}>Salvar Talhão</Button>
