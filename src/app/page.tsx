@@ -46,17 +46,18 @@ export default function Home() {
   const auth = getAuth(app);
 
   useEffect(() => {
+    // We can still listen for auth changes for future use, but it won't block publishing.
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User is signed in.
         setCurrentUser(user);
-        console.log('User signed in anonymously:', user.uid);
       } else {
-        // User is signed out.
-        setCurrentUser(null);
+        // If not logged in, try to log in anonymously once.
+        signInAnonymously(auth).catch((error) => {
+          console.error("Anonymous sign-in failed:", error);
+        });
       }
     });
-    
+
     const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const postsData: Post[] = [];
@@ -112,19 +113,11 @@ export default function Home() {
     if (!postContent && !mediaFile) return;
 
     try {
-        let user = auth.currentUser;
-        // If user is not logged in, sign in anonymously and wait for it.
-        if (!user) {
-            const userCredential = await signInAnonymously(auth);
-            user = userCredential.user;
-            console.log("Signed in anonymously to publish:", user.uid);
-        }
-
         const postData: any = {
           author: {
-            name: 'Usuário Anônimo',
+            name: currentUser?.isAnonymous ? 'Usuário Anônimo' : 'Usuário',
             avatar: 'https://placehold.co/40x40.png',
-            handle: `@user${user.uid.substring(0, 5)}`,
+            handle: `@user${currentUser ? currentUser.uid.substring(0, 5) : '12345'}`,
           },
           content: postContent,
           likes: 0,
@@ -134,7 +127,8 @@ export default function Home() {
         };
 
         if (mediaFile) {
-            const storageRef = ref(storage, `posts/${user.uid}/${mediaFile.name}_${Date.now()}`);
+            // The storage path does not need user information if rules are public
+            const storageRef = ref(storage, `posts/${Date.now()}_${mediaFile.name}`);
             await uploadBytes(storageRef, mediaFile);
             const mediaUrl = await getDownloadURL(storageRef);
             const mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
@@ -162,14 +156,11 @@ export default function Home() {
     if (!timestamp) return 'agora';
   
     let date: Date;
-    // Check if it's already a Firebase Timestamp object
     if (timestamp instanceof Timestamp) {
       date = timestamp.toDate();
     } else if (timestamp && typeof timestamp.seconds === 'number' && typeof timestamp.nanoseconds === 'number') {
-      // Handle the object format that comes from Firestore before conversion
       date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
     } else {
-      // Fallback for serverTimestamp() which might not be resolved yet
       return 'enviando...';
     }
   
