@@ -16,9 +16,10 @@ interface MapWithDrawProps {
     center: LatLngTuple;
     zoom: number;
     drawnLayer: any;
+    isViewOnly?: boolean;
 }
 
-const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateChange, center, zoom, drawnLayer }) => {
+const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateChange, center, zoom, drawnLayer, isViewOnly = false }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
@@ -54,45 +55,58 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateCha
 
       // Restore previously drawn layer
       if (drawnLayer) {
-        const layer = L.geoJSON(drawnLayer);
+        const layer = L.geoJSON(drawnLayer, {
+          style: {
+            color: '#f06e52',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.2
+          }
+        });
         layer.eachLayer(l => drawnItems.addLayer(l));
+        if (layer.getBounds().isValid()) {
+            map.fitBounds(layer.getBounds());
+        }
       }
 
-      // Initialize the draw control
-      const drawControl = new L.Control.Draw({
-        edit: {
-          featureGroup: drawnItems,
-        },
-        draw: {
-          polygon: {
-            allowIntersection: false,
-            shapeOptions: {
-              color: '#f06e52'
-            }
+      if (!isViewOnly) {
+        // Initialize the draw control
+        const drawControl = new L.Control.Draw({
+          edit: {
+            featureGroup: drawnItems,
           },
-          polyline: false,
-          rectangle: false,
-          circle: false,
-          marker: false,
-          circlemarker: false,
-        },
-      });
-      map.addControl(drawControl);
+          draw: {
+            polygon: {
+              allowIntersection: false,
+              shapeOptions: {
+                color: '#f06e52'
+              }
+            },
+            polyline: false,
+            rectangle: false,
+            circle: false,
+            marker: false,
+            circlemarker: false,
+          },
+        });
+        map.addControl(drawControl);
 
-      map.on(L.Draw.Event.CREATED, (event) => {
-        const layer = (event as any).layer;
-        
-        // Clear previous drawings
-        drawnItems.clearLayers();
-        drawnItems.addLayer(layer);
-        
-        // Calculate area
-        const latlngs = layer.getLatLngs()[0];
-        const areaInSquareMeters = L.GeometryUtil.geodesicArea(latlngs);
-        const areaInHectares = areaInSquareMeters / 10000;
-        
-        onDrawComplete(areaInHectares, layer.toGeoJSON());
-      });
+        const handleDrawEvent = (event: L.LeafletEvent) => {
+          const layer = (event as any).layer;
+          
+          drawnItems.clearLayers();
+          drawnItems.addLayer(layer);
+          
+          const latlngs = layer.getLatLngs()[0];
+          const areaInSquareMeters = L.GeometryUtil.geodesicArea(latlngs);
+          const areaInHectares = areaInSquareMeters / 10000;
+          
+          onDrawComplete(areaInHectares, layer.toGeoJSON());
+        }
+
+        map.on(L.Draw.Event.CREATED, handleDrawEvent);
+        map.on(L.Draw.Event.EDITED, handleDrawEvent);
+      }
       
       map.on('zoomend moveend', () => {
           const newCenter = map.getCenter();
@@ -108,7 +122,8 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateCha
         mapInstanceRef.current = null;
       }
     };
-  }, [onDrawComplete, onMapStateChange, center, zoom, drawnLayer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

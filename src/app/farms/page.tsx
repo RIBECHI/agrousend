@@ -21,60 +21,79 @@ const initialPlots = [
     id: 1,
     name: 'Talhão 01 - Sede',
     crop: 'Soja',
-    area: '150 ha',
+    area: '150',
     status: 'Plantio',
+    geometry: null,
   },
   {
     id: 2,
     name: 'Talhão 02 - Rio',
     crop: 'Milho',
-    area: '120 ha',
+    area: '120',
     status: 'Crescimento',
+    geometry: null,
   },
     {
     id: 3,
     name: 'Talhão 03 - Armazém',
     crop: 'Algodão',
-    area: '85 ha',
+    area: '85',
     status: 'Colheita',
+    geometry: null,
   },
     {
     id: 4,
     name: 'Talhão 04 - Pasto Novo',
     crop: 'Pasto',
-    area: '200 ha',
+    area: '200',
     status: 'Descanso',
+    geometry: null,
   },
 ];
 
+type Plot = typeof initialPlots[0];
+
 export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
-  const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
+  const [selectedPlot, setSelectedPlot] = useState<Partial<Plot> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+
   const [mapCenter, setMapCenter] = useState<LatLngTuple>([-15.77972, -47.92972]);
   const [mapZoom, setMapZoom] = useState(4);
   const [drawnLayer, setDrawnLayer] = useState<any>(null);
 
 
-  const handleAddPlot = () => {
-    if (newPlot.name && newPlot.crop && newPlot.area) {
-      setPlots([
-        ...plots,
-        {
-          id: plots.length + 1,
-          ...newPlot,
-          area: `${newPlot.area} ha`,
-          status: 'Planejado',
-        },
-      ]);
-      setNewPlot({ name: '', crop: '', area: '' });
-      setDrawnLayer(null);
-      setIsDialogOpen(false);
+  const handlePlotChange = (field: keyof Omit<Plot, 'id' | 'status'>, value: string | null) => {
+    if (selectedPlot) {
+      setSelectedPlot({ ...selectedPlot, [field]: value });
     }
+  };
+  
+  const handleSavePlot = () => {
+    if (!selectedPlot || !selectedPlot.name || !selectedPlot.crop || !selectedPlot.area) return;
+
+    if (selectedPlot.id) {
+      // Editing existing plot
+      setPlots(plots.map(p => p.id === selectedPlot!.id ? { ...p, ...selectedPlot, area: selectedPlot.area || p.area, geometry: drawnLayer || p.geometry } as Plot : p));
+    } else {
+      // Adding new plot
+      const newPlotWithId: Plot = {
+        id: plots.length > 0 ? Math.max(...plots.map(p => p.id)) + 1 : 1,
+        name: selectedPlot.name,
+        crop: selectedPlot.crop,
+        area: selectedPlot.area,
+        status: 'Planejado',
+        geometry: drawnLayer,
+      };
+      setPlots([...plots, newPlotWithId]);
+    }
+
+    closeDialog();
   };
 
   const handleDrawComplete = (areaInHectares: number, layer: any) => {
-    setNewPlot(prev => ({ ...prev, area: areaInHectares.toFixed(2) }));
+    handlePlotChange('area', areaInHectares.toFixed(2));
     setDrawnLayer(layer);
   };
   
@@ -83,12 +102,32 @@ export default function FarmsPage() {
     setMapZoom(zoom);
   };
 
-  const openDialog = () => {
+  const openDialogForNew = () => {
+    setSelectedPlot({ name: '', crop: '', area: '', geometry: null });
+    setDrawnLayer(null);
+    setIsViewOnly(false);
     setIsDialogOpen(true);
   }
   
+  const openDialogForEdit = (plot: Plot) => {
+    setSelectedPlot({ ...plot });
+    setDrawnLayer(plot.geometry);
+    setIsViewOnly(false);
+    setIsDialogOpen(true);
+  };
+
+  const openDialogForView = (plot: Plot) => {
+    setSelectedPlot({ ...plot });
+    setDrawnLayer(plot.geometry);
+    setIsViewOnly(true);
+    setIsDialogOpen(true);
+  };
+
   const closeDialog = () => {
     setIsDialogOpen(false);
+    setSelectedPlot(null);
+    setDrawnLayer(null);
+    setIsViewOnly(false);
   }
 
   return (
@@ -98,51 +137,51 @@ export default function FarmsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Talhões</h1>
           <p className="text-muted-foreground">Gerencie e visualize os talhões da sua fazenda.</p>
         </div>
-        <Button size="lg" onClick={openDialog}>
+        <Button size="lg" onClick={openDialogForNew}>
           <PlusCircle className="mr-2 h-5 w-5" />
           Adicionar Novo Talhão
         </Button>
       </div>
        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-4xl">
+          <DialogContent className="sm:max-w-4xl" onInteractOutside={(e) => e.preventDefault()} onCloseAutoFocus={closeDialog}>
             <DialogHeader>
-              <DialogTitle>Adicionar Novo Talhão</DialogTitle>
+              <DialogTitle>{isViewOnly ? 'Visualizar Talhão' : (selectedPlot?.id ? 'Editar Talhão' : 'Adicionar Novo Talhão')}</DialogTitle>
               <DialogDescription>
-                Preencha as informações do novo talhão e desenhe seu perímetro no mapa.
+                {isViewOnly ? 'Visualize o perímetro do talhão no mapa.' : 'Preencha as informações do talhão e desenhe seu perímetro no mapa.'}
               </DialogDescription>
             </DialogHeader>
             <div className="grid md:grid-cols-2 gap-8 py-4">
-              <div className="space-y-4">
+              <fieldset disabled={isViewOnly} className="space-y-4">
                   <div className="space-y-2">
                       <Label htmlFor="name">Nome do Talhão</Label>
                       <Input
-                      id="name"
-                      value={newPlot.name}
-                      onChange={(e) => setNewPlot({ ...newPlot, name: e.target.value })}
-                      placeholder="Ex: Talhão da Estrada"
+                        id="name"
+                        value={selectedPlot?.name || ''}
+                        onChange={(e) => handlePlotChange('name', e.target.value)}
+                        placeholder="Ex: Talhão da Estrada"
                       />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="crop">Cultura</Label>
                       <Input
-                      id="crop"
-                      value={newPlot.crop}
-                      onChange={(e) => setNewPlot({ ...newPlot, crop: e.target.value })}
-                      placeholder="Ex: Soja"
+                        id="crop"
+                        value={selectedPlot?.crop || ''}
+                        onChange={(e) => handlePlotChange('crop', e.target.value)}
+                        placeholder="Ex: Soja"
                       />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="area">Área (ha)</Label>
                       <Input
-                      id="area"
-                      type="number"
-                      value={newPlot.area}
-                      onChange={(e) => setNewPlot({ ...newPlot, area: e.target.value })}
-                      placeholder="Calculada pelo desenho no mapa"
-                      readOnly
+                        id="area"
+                        type="number"
+                        value={selectedPlot?.area || ''}
+                        onChange={(e) => handlePlotChange('area', e.target.value)}
+                        placeholder="Calculada pelo desenho no mapa"
+                        readOnly
                       />
                   </div>
-              </div>
+              </fieldset>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
                 {isDialogOpen && (
                   <MapWithDraw 
@@ -151,13 +190,14 @@ export default function FarmsPage() {
                     center={mapCenter}
                     zoom={mapZoom}
                     drawnLayer={drawnLayer}
+                    isViewOnly={isViewOnly}
                   />
                 )}
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button onClick={handleAddPlot}>Salvar Talhão</Button>
+              <Button variant="outline" onClick={closeDialog}>Fechar</Button>
+              {!isViewOnly && <Button onClick={handleSavePlot}>Salvar Talhão</Button>}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -172,7 +212,7 @@ export default function FarmsPage() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Cultura</TableHead>
-                  <TableHead>Área</TableHead>
+                  <TableHead>Área (ha)</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -197,8 +237,12 @@ export default function FarmsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver no Mapa</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openDialogForView(plot)} disabled={!plot.geometry}>
+                            Ver no Mapa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openDialogForEdit(plot)}>
+                            Editar
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive">Excluir</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
