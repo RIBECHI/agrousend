@@ -10,7 +10,11 @@ import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
-const MapWithDraw = () => {
+interface MapWithDrawProps {
+    onDrawComplete: (areaInHectares: number) => void;
+}
+
+const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -59,8 +63,15 @@ const MapWithDraw = () => {
       map.addControl(drawControl);
 
       map.on(L.Draw.Event.CREATED, (event) => {
-        const layer = (event as L.Draw.FeatureEvent).layer;
+        const layer = (event as any).layer;
         drawnItems.addLayer(layer);
+        
+        // Calculate area
+        const latlngs = layer.getLatLngs()[0];
+        const areaInSquareMeters = L.GeometryUtil.geodesicArea(latlngs);
+        const areaInHectares = areaInSquareMeters / 10000;
+        
+        onDrawComplete(areaInHectares);
       });
     }
 
@@ -70,7 +81,7 @@ const MapWithDraw = () => {
         mapInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [onDrawComplete]);
 
   return (
     <div

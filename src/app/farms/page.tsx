@@ -67,6 +67,10 @@ export default function FarmsPage() {
     }
   };
 
+  const handleAreaCalculated = (areaInHectares: number) => {
+    setNewPlot(prev => ({ ...prev, area: areaInHectares.toFixed(2) }));
+  };
+
   const openDialog = () => {
     setIsDialogOpen(true);
   }
@@ -123,7 +127,7 @@ export default function FarmsPage() {
                   </div>
               </div>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
-                {isDialogOpen && <MapWithDraw />}
+                {isDialogOpen && <MapWithDraw onDrawComplete={handleAreaCalculated} />}
               </div>
             </div>
             <DialogFooter>
