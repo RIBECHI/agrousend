@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -12,7 +12,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Leaf } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,16 +19,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { user, loading } = useAuth();
-
-  // Redireciona se o usuário já estiver logado.
-  // Isso evita que um usuário logado veja a tela de login.
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/feed');
-    }
-  }, [user, loading, router]);
-
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +26,7 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       // No sucesso do login, o hook de autenticação irá atualizar o estado 'user',
-      // e o useEffect acima fará o redirecionamento.
+      // e o layout protegido fará o redirecionamento.
       // Adicionamos um redirecionamento explícito aqui por segurança.
       router.push('/feed');
     } catch (error: any) {
@@ -49,12 +38,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-  
-  // Enquanto carrega ou se o usuário já estiver logado, não renderiza nada para evitar piscar de tela.
-  if (loading || user) {
-    return null; 
-  }
-
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-secondary">
