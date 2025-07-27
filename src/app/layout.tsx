@@ -1,11 +1,7 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
-import { MainNav } from '@/components/layout/main-nav';
-import { UserNav } from '@/components/layout/user-nav';
 import { Toaster } from '@/components/ui/toaster';
-import { Leaf } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import { AuthProvider } from '@/contexts/auth-context';
