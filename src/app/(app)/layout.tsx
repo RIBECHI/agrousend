@@ -25,8 +25,16 @@ export default function AppLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Enquanto está carregando, exibe um esqueleto de UI.
-  if (loading) {
+  useEffect(() => {
+    // Se não está carregando e não há usuário, redireciona para a página de login.
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [loading, user, router]);
+
+  // Enquanto está carregando ou se não há usuário (antes do redirecionamento),
+  // exibe uma tela de carregamento para evitar piscar de conteúdo.
+  if (loading || !user) {
     return (
        <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
@@ -41,34 +49,28 @@ export default function AppLayout({
   }
 
   // Se o usuário está autenticado, renderiza o layout completo da aplicação.
-  if (user) {
-    return (
-      <SidebarProvider>
-        <Sidebar>
-          <SidebarHeader>
-            <div className="flex items-center gap-2">
-              <Leaf className="size-8 text-primary" />
-              <span className="text-xl font-semibold text-primary">AgroUs</span>
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <MainNav />
-          </SidebarContent>
-        </Sidebar>
-        <SidebarInset>
-          <header className="flex items-center justify-between p-4 border-b">
-            <SidebarTrigger />
-            <UserNav />
-          </header>
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  // Se não está carregando e não há usuário, renderiza apenas o conteúdo da página
-  // (que no caso do /feed, mostrará os botões de login/cadastro).
-  return <>{children}</>;
+  return (
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <div className="flex items-center gap-2">
+            <Leaf className="size-8 text-primary" />
+            <span className="text-xl font-semibold text-primary">AgroUs</span>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <MainNav />
+        </SidebarContent>
+      </Sidebar>
+      <SidebarInset>
+        <header className="flex items-center justify-between p-4 border-b">
+          <SidebarTrigger />
+          <UserNav />
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
 }

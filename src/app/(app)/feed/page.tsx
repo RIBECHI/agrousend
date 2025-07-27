@@ -23,7 +23,8 @@ export default function FeedPage() {
     );
   }
 
-  // Fallback para caso o usuário acesse o feed sem estar logado
+  // Se não houver usuário, mas a página for renderizada (cenário de fallback)
+  // mostramos os botões de login e cadastro.
   if (!user) {
     return (
         <div className="flex-1 flex items-center justify-center bg-secondary p-4 h-full">
