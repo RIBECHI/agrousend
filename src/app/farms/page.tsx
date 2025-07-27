@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-const MapDisplay = dynamic(() => import('@/components/map-display'), { ssr: false });
+const MapWithDraw = dynamic(() => import('@/components/map-with-draw'), { ssr: false });
 
 const initialPlots = [
   {
@@ -123,7 +123,7 @@ export default function FarmsPage() {
                   </div>
               </div>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
-                {isDialogOpen && <MapDisplay />}
+                {isDialogOpen && <MapWithDraw />}
               </div>
             </div>
             <DialogFooter>

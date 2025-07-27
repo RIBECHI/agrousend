@@ -3,24 +3,20 @@
 
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw';
 
-// Leaflet's default icons are not properly configured for bundlers like Webpack.
-// This is a common workaround.
+// Workaround for Leaflet's default icon issues with bundlers
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
-const MapDisplay = () => {
+const MapWithDraw = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    // This effect runs when the component mounts.
     if (mapContainerRef.current && !mapInstanceRef.current) {
-      // Create map instance only if it doesn't exist.
-      
-      // Fix for default icon issue with webpack
+      // Fix default icon path issue
       const DefaultIcon = L.icon({
           iconRetinaUrl: iconRetinaUrl.src,
           iconUrl: iconUrl.src,
@@ -32,25 +28,49 @@ const MapDisplay = () => {
       });
       L.Marker.prototype.options.icon = DefaultIcon;
 
-      mapInstanceRef.current = L.map(mapContainerRef.current, {
+      const map = L.map(mapContainerRef.current, {
         center: [-15.77972, -47.92972],
         zoom: 4,
-        scrollWheelZoom: false,
       });
+      mapInstanceRef.current = map;
 
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      }).addTo(mapInstanceRef.current);
+      }).addTo(map);
+
+      // FeatureGroup to store editable layers
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+
+      // Initialize the draw control
+      const drawControl = new L.Control.Draw({
+        edit: {
+          featureGroup: drawnItems,
+        },
+        draw: {
+          polygon: true,
+          polyline: false,
+          rectangle: false,
+          circle: false,
+          marker: false,
+          circlemarker: false,
+        },
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (event) => {
+        const layer = (event as L.Draw.FeatureEvent).layer;
+        drawnItems.addLayer(layer);
+      });
     }
 
-    // Cleanup function: this runs when the component unmounts.
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, []); // Empty dependency array ensures this effect runs only once on mount and cleanup runs on unmount.
+  }, []);
 
   return (
     <div
@@ -60,4 +80,4 @@ const MapDisplay = () => {
   );
 };
 
-export default MapDisplay;
+export default MapWithDraw;
