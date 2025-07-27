@@ -29,8 +29,8 @@ interface Post {
   timestamp: any;
 }
 
-export default function Home() {
-  const { user } = useAuth(); // Not checking loading, AppLayout handles it
+export default function FeedPage() {
+  const { user } = useAuth(); 
   
   const [posts, setPosts] = useState<Post[]>([]);
   const [postContent, setPostContent] = useState('');
@@ -40,7 +40,8 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // We can safely assume user is available here because AppLayout protects this page
+    if (!user) return; // Don't fetch posts if not logged in
+
     const q = query(collection(firestore, "posts"), orderBy("timestamp", "desc"));
     const unsubscribePosts = onSnapshot(q, (snapshot) => {
       const postsData = snapshot.docs.map(doc => ({
@@ -53,7 +54,7 @@ export default function Home() {
     });
 
     return () => unsubscribePosts();
-  }, []);
+  }, [user]); // Re-run when user object is available
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -72,7 +73,7 @@ export default function Home() {
   }
 
   const handlePublish = async () => {
-    if (!user) { // This check is mostly for safety, should not be hit
+    if (!user) { 
       alert("Você precisa estar logado para publicar.");
       return;
     }
@@ -153,7 +154,7 @@ export default function Home() {
       <div className="space-y-6">
         <Card>
           <CardContent className="p-4">
-            <fieldset disabled={isPublishing || !user}>
+            <fieldset disabled={!user || isPublishing}>
               <div className="flex gap-4">
                 <Avatar>
                   <AvatarImage src={user?.photoURL || 'https://placehold.co/40x40.png'} />
@@ -235,4 +236,3 @@ export default function Home() {
     </div>
   );
 }
-
