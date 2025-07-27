@@ -53,6 +53,9 @@ export default function Home() {
         } as Post);
       });
       setPosts(postsData);
+    }, (error) => {
+        console.error("Error fetching posts: ", error);
+        // Em um app real, você poderia mostrar um toast para o usuário
     });
 
     return () => unsubscribe();
@@ -78,7 +81,7 @@ export default function Home() {
 
   const removeMedia = () => {
     if (mediaPreview) {
-      // URL.revokeObjectURL(mediaPreview.url); // Let browser handle this
+      // URL.revokeObjectURL(mediaPreview.url); // Deixar o navegador gerenciar
     }
     setMediaPreview(null);
     setMediaFile(null);
@@ -90,41 +93,60 @@ export default function Home() {
   const handlePublish = async () => {
     if (!postContent && !mediaFile) return;
 
-    let mediaUrl = '';
-    let mediaType: 'image' | 'video' | undefined = undefined;
+    try {
+        let mediaUrl = '';
+        let mediaType: 'image' | 'video' | undefined = undefined;
 
-    if (mediaFile) {
-        const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
-        await uploadBytes(storageRef, mediaFile);
-        mediaUrl = await getDownloadURL(storageRef);
-        mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        if (mediaFile) {
+            const storageRef = ref(storage, `posts/${mediaFile.name}_${Date.now()}`);
+            await uploadBytes(storageRef, mediaFile);
+            mediaUrl = await getDownloadURL(storageRef);
+            mediaType = mediaFile.type.startsWith('image/') ? 'image' : 'video';
+        }
+
+
+        await addDoc(collection(db, "posts"), {
+          author: {
+            name: 'Você (Usuário Teste)',
+            avatar: 'https://placehold.co/40x40.png',
+            handle: '@voce',
+          },
+          content: postContent,
+          image: mediaType === 'image' ? mediaUrl : undefined,
+          video: mediaType === 'video' ? mediaUrl : undefined,
+          imageHint: 'new post',
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          timestamp: serverTimestamp(),
+        });
+
+        setPostContent('');
+        removeMedia();
+    } catch (error) {
+        console.error("Error publishing post: ", error);
+        alert("Ocorreu um erro ao publicar. Verifique as regras de segurança do Firestore no Console do Firebase. Para desenvolvimento, permita a escrita pública em 'posts'.");
     }
-
-
-    await addDoc(collection(db, "posts"), {
-      author: {
-        name: 'Você (Usuário Teste)',
-        avatar: 'https://placehold.co/40x40.png',
-        handle: '@voce',
-      },
-      content: postContent,
-      image: mediaType === 'image' ? mediaUrl : undefined,
-      video: mediaType === 'video' ? mediaUrl : undefined,
-      imageHint: 'new post',
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      timestamp: serverTimestamp(),
-    });
-
-    setPostContent('');
-    removeMedia();
   };
   
   const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return 'Agora';
+    if (timestamp instanceof Timestamp) {
+       const date = timestamp.toDate();
+       const now = new Date();
+       const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+       
+       if (diffSeconds < 60) return `${diffSeconds}s`;
+       const diffMinutes = Math.round(diffSeconds / 60);
+       if (diffMinutes < 60) return `${diffMinutes}m`;
+       const diffHours = Math.round(diffMinutes / 60);
+       if (diffHours < 24) return `${diffHours}h`;
+       const diffDays = Math.round(diffHours / 24);
+       return `${diffDays}d`;
+    }
+    // Fallback para o formato antigo, se houver
     if (timestamp.seconds) {
-       const date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
+      const date = new Timestamp(timestamp.seconds, timestamp.nanoseconds).toDate();
        const now = new Date();
        const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
        
