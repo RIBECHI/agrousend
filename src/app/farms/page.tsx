@@ -50,7 +50,6 @@ export default function FarmsPage() {
   const [plots, setPlots] = useState(initialPlots);
   const [newPlot, setNewPlot] = useState({ name: '', crop: '', area: '' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [mapRenderKey, setMapRenderKey] = useState(0);
 
   const handleAddPlot = () => {
     if (newPlot.name && newPlot.crop && newPlot.area) {
@@ -69,7 +68,6 @@ export default function FarmsPage() {
   };
 
   const openDialog = () => {
-    setMapRenderKey(prevKey => prevKey + 1); // Change key to force re-render
     setIsDialogOpen(true);
   }
   
@@ -125,7 +123,7 @@ export default function FarmsPage() {
                   </div>
               </div>
               <div className="h-[400px] w-full bg-secondary rounded-lg overflow-hidden">
-                {isDialogOpen && <MapDisplay key={mapRenderKey} />}
+                {isDialogOpen && <MapDisplay />}
               </div>
             </div>
             <DialogFooter>
