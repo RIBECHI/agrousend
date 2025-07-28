@@ -17,10 +17,10 @@ service cloud.firestore {
 
     // Regras para a coleção 'farmPlots'
     match /farmPlots/{plotId} {
-      // Permite que um usuário leia (get, list) ou escreva (create, update, delete) 
-      // em um talhão apenas se o 'userId' do documento corresponder ao UID do usuário autenticado.
-      // Isso garante que os usuários só possam acessar e modificar seus próprios dados.
-      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Permite que um usuário leia (get, list) ou escreva (create, update, delete)
+      // um documento se o 'userId' do documento corresponder ao UID do usuário autenticado.
+      // Esta única regra abrange todos os casos necessários de forma segura.
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
