@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Leaf, SprayCan, Bug, Beaker, Cog, Tractor } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Leaf, SprayCan, Bug, Beaker, Cog, Tractor, Pencil, Eye } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -335,7 +335,15 @@ export default function ItemsPage() {
                 <CardContent className="flex-grow">
                    {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
                 </CardContent>
-                <CardFooter className="flex justify-end pt-4">
+                <CardFooter className="flex justify-end pt-4 space-x-2">
+                   <Button variant="outline" size="icon">
+                      <Eye className="h-5 w-5" />
+                      <span className="sr-only">Detalhes</span>
+                   </Button>
+                   <Button variant="outline" size="icon">
+                      <Pencil className="h-5 w-5" />
+                      <span className="sr-only">Editar</span>
+                   </Button>
                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
                       <Trash2 className="h-5 w-5" />
                       <span className="sr-only">Excluir</span>
@@ -365,7 +373,3 @@ export default function ItemsPage() {
     </>
   );
 }
-
-    
-
-    
