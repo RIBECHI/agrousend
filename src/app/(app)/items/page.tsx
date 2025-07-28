@@ -34,6 +34,9 @@ interface CatalogItem {
   fabricante?: string;
   principioAtivo?: string;
   formula?: string;
+  tipo?: string;
+  aplicacao?: string;
+  codigo?: string;
 }
 
 export default function ItemsPage() {
@@ -51,6 +54,9 @@ export default function ItemsPage() {
   const [fabricante, setFabricante] = useState('');
   const [principioAtivo, setPrincipioAtivo] = useState('');
   const [formula, setFormula] = useState('');
+  const [tipo, setTipo] = useState('');
+  const [aplicacao, setAplicacao] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -67,7 +73,7 @@ export default function ItemsPage() {
     const q = query(
       itemsCollection,
       where('userId', '==', user.uid)
-      // Temporariamente removido: orderBy('name')
+      // Temporariamente removido para evitar erro de índice: orderBy('name')
     );
     
     setIsLoading(true);
@@ -81,8 +87,8 @@ export default function ItemsPage() {
         console.error("ERRO DO FIREBASE AQUI: ", error); // Alteração para facilitar a busca do erro
         toast({
           variant: "destructive",
-          title: "Erro ao carregar itens: Crie um índice no Firestore",
-          description: "Verifique o console do navegador para encontrar um link e criar o índice.",
+          title: "Erro ao carregar itens.",
+          description: "Verifique o console do navegador para mais detalhes e criar o índice se necessário.",
         });
         setIsLoading(false);
       }
@@ -98,6 +104,9 @@ export default function ItemsPage() {
     setFabricante('');
     setPrincipioAtivo('');
     setFormula('');
+    setTipo('');
+    setAplicacao('');
+    setCodigo('');
     setIsSubmitting(false);
   }
 
@@ -122,7 +131,11 @@ export default function ItemsPage() {
         createdAt: serverTimestamp(),
       };
 
-      if (category !== 'peças') {
+      if (category === 'peças') {
+        newItem.tipo = tipo;
+        newItem.aplicacao = aplicacao;
+        newItem.codigo = codigo;
+      } else {
         newItem.fabricante = fabricante;
         newItem.principioAtivo = principioAtivo;
         newItem.formula = formula;
@@ -235,6 +248,23 @@ export default function ItemsPage() {
                         <div>
                             <Label htmlFor="formula">Fórmula</Label>
                             <Input id="formula" value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="Ex: C3H8NO5P" />
+                        </div>
+                    </div>
+                  )}
+
+                  {category === 'peças' && (
+                     <div className="space-y-4 border-t pt-4">
+                        <div>
+                            <Label htmlFor="tipo">Tipo</Label>
+                            <Input id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Ex: Filtro de ar, Correia" />
+                        </div>
+                        <div>
+                            <Label htmlFor="aplicacao">Aplicação</Label>
+                            <Input id="aplicacao" value={aplicacao} onChange={(e) => setAplicacao(e.target.value)} placeholder="Ex: Motor, Colheitadeira" />
+                        </div>
+                        <div>
+                            <Label htmlFor="codigo">Código/Referência</Label>
+                            <Input id="codigo" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Ex: 5801483321" />
                         </div>
                     </div>
                   )}
