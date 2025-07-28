@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, addDoc, serverTimestamp, orderBy, Timestamp } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, User, Users } from 'lucide-react';
+import { Send, User, Users, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -36,6 +36,7 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,9 @@ export default function ChatPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedUsers = snapshot.docs.map(doc => doc.data() as UserProfile);
       setUsers(fetchedUsers);
+      setIsLoadingUsers(false);
+    }, (error) => {
+      console.error("Erro ao buscar usuários: ", error);
       setIsLoadingUsers(false);
     });
 
@@ -91,19 +95,34 @@ export default function ChatPage() {
       setIsSending(false);
     }
   };
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => 
+      u.displayName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
   
   return (
     <div className="h-[calc(100vh-10rem)] flex">
       <Card className="w-1/3 min-w-[300px] flex flex-col">
-        <CardHeader>
+        <CardHeader className="space-y-4">
           <h2 className="text-xl font-bold flex items-center gap-2"><Users /> Produtores</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nome..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-0 flex-1">
           <ScrollArea className="h-full">
             {isLoadingUsers ? (
                 <p className="p-4 text-muted-foreground">Carregando usuários...</p>
             ) : (
-                users.map(u => (
+                filteredUsers.map(u => (
                 <div
                     key={u.uid}
                     className={cn(
@@ -122,6 +141,9 @@ export default function ChatPage() {
                     </div>
                 </div>
                 ))
+            )}
+            {!isLoadingUsers && filteredUsers.length === 0 && (
+                 <p className="p-4 text-center text-muted-foreground">Nenhum produtor encontrado.</p>
             )}
           </ScrollArea>
         </CardContent>
