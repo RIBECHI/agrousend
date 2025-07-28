@@ -12,7 +12,7 @@ import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timest
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ImageIcon, X, MoreVertical, Trash2, Heart, MessageSquare, Send } from 'lucide-react';
+import { ImageIcon, X, MoreVertical, Trash2, Heart, MessageSquare, Send, Share2, ThumbsUp } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 
 interface Comment {
@@ -114,6 +115,8 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
     };
     
     const embedUrl = post.videoId ? `https://www.youtube.com/embed/${post.videoId}` : null;
+    const likeCount = post.likes?.length || 0;
+    const commentCount = comments.length || 0;
 
     return (
         <Card>
@@ -148,7 +151,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                     )}
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-0">
                 {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
                 
                 {embedUrl && (
@@ -175,21 +178,45 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                     </div>
                 )}
             </CardContent>
-                <CardFooter className="flex-col items-start pt-4 border-t">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => handleLikeToggle(post.id)}>
+            
+            {(likeCount > 0 || commentCount > 0) && (
+                 <div className="px-6 py-2 flex justify-between items-center text-sm text-muted-foreground">
+                    {likeCount > 0 && (
+                        <div className="flex items-center gap-1">
+                            <div className="bg-primary p-1 rounded-full">
+                                <ThumbsUp className="h-3 w-3 text-primary-foreground" />
+                            </div>
+                            <span>{likeCount}</span>
+                        </div>
+                    )}
+                     {commentCount > 0 && (
+                        <span>{commentCount} {commentCount === 1 ? 'comentário' : 'comentários'}</span>
+                    )}
+                </div>
+            )}
+           
+            <div className="border-t border-b mx-6 my-2">
+                <div className="flex justify-around">
+                    <Button variant="ghost" className="w-full rounded-none" onClick={() => handleLikeToggle(post.id)}>
                         <Heart className={cn("mr-2 h-5 w-5", hasLiked && "text-red-500 fill-current")} />
-                        <span>{post.likes?.length || 0}</span>
-                        <span className="sr-only">Curtir</span>
+                        <span>Curtir</span>
                     </Button>
-                    <Button variant="ghost" size="sm">
+                     <div className="border-l h-auto my-2"></div>
+                    <Button variant="ghost" className="w-full rounded-none">
                         <MessageSquare className="mr-2 h-5 w-5" />
-                        <span>{comments.length}</span>
-                        <span className="sr-only">Comentar</span>
+                        <span>Comentar</span>
+                    </Button>
+                     <div className="border-l h-auto my-2"></div>
+                     <Button variant="ghost" className="w-full rounded-none" onClick={() => toast({ title: 'Funcionalidade em breve!'})}>
+                        <Share2 className="mr-2 h-5 w-5" />
+                        <span>Compartilhar</span>
                     </Button>
                 </div>
-                
-                <div className="w-full space-y-4 mt-4">
+            </div>
+
+
+            <CardFooter className="flex-col items-start pt-4">
+                <div className="w-full space-y-4">
                     {comments.map(comment => (
                         <div key={comment.id} className="flex items-start gap-3">
                             <Avatar className="h-8 w-8">
@@ -220,9 +247,9 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           disabled={isCommenting}
-                          className="rounded-full"
+                          className="rounded-full bg-muted focus-visible:ring-1"
                       />
-                      <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting}>
+                      <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting} className="rounded-full">
                           <Send className="h-5 w-5" />
                       </Button>
                   </form>
@@ -311,13 +338,11 @@ export default function FeedPage() {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
             
-            const videoId = getYouTubeVideoId(newPost);
-            
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: newPost, // Salva o texto completo
+                content: newPost,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
@@ -325,7 +350,8 @@ export default function FeedPage() {
             if (imageFile) {
                 postData.imageUrl = await toBase64(imageFile);
             }
-
+            
+            const videoId = getYouTubeVideoId(newPost);
             if (videoId) {
                 postData.videoId = videoId;
             }
@@ -567,3 +593,5 @@ export default function FeedPage() {
   );
 }
 
+
+    
