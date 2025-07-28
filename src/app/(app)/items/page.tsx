@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Tag } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Leaf, Spray, Bug, Beaker, Cog, Tractor } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -24,6 +24,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+
 
 interface CatalogItem {
   id: string;
@@ -38,6 +40,17 @@ interface CatalogItem {
   aplicacao?: string;
   codigo?: string;
 }
+
+const categoryConfig: { [key: string]: { icon: React.ElementType, color: string } } = {
+  fungicida: { icon: Spray, color: 'border-t-blue-500' },
+  inseticida: { icon: Bug, color: 'border-t-red-500' },
+  fertilizante: { icon: Beaker, color: 'border-t-green-500' },
+  herbicida: { icon: Leaf, color: 'border-t-yellow-500' },
+  sementes: { icon: Tractor, color: 'border-t-orange-500' },
+  peças: { icon: Cog, color: 'border-t-gray-500' },
+  default: { icon: Tractor, color: 'border-t-gray-400' },
+};
+
 
 export default function ItemsPage() {
   const { user } = useAuth();
@@ -69,22 +82,20 @@ export default function ItemsPage() {
     }
 
     const itemsCollection = collection(firestore, 'items');
-    // A consulta composta com where() e orderBy() requer um índice manual no Firestore.
     const q = query(
       itemsCollection,
       where('userId', '==', user.uid)
-      // Temporariamente removido para evitar erro de índice: orderBy('name')
     );
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, 
       (snapshot) => {
         const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatalogItem));
-        setItems(fetchedItems);
+        setItems(fetchedItems.sort((a, b) => a.name.localeCompare(b.name)));
         setIsLoading(false);
       }, 
       (error) => {
-        console.error("ERRO DO FIREBASE AQUI: ", error); // Alteração para facilitar a busca do erro
+        console.error("ERRO DO FIREBASE AQUI: ", error); 
         toast({
           variant: "destructive",
           title: "Erro ao carregar itens.",
@@ -205,14 +216,14 @@ export default function ItemsPage() {
               Cadastrar Novo Item
             </Button>
           </SheetTrigger>
-          <SheetContent>
-            <form onSubmit={handleSubmit} className="flex flex-col h-full">
-              <SheetHeader>
-                <SheetTitle>Cadastrar Novo Item</SheetTitle>
-                <SheetDescription>
-                  Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.
-                </SheetDescription>
-              </SheetHeader>
+          <SheetContent className="flex flex-col">
+            <SheetHeader>
+              <SheetTitle>Cadastrar Novo Item</SheetTitle>
+              <SheetDescription>
+                Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.
+              </SheetDescription>
+            </SheetHeader>
+            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
               <div className="space-y-4 py-6 flex-1 overflow-y-auto pr-6">
                   <div>
                     <Label htmlFor="name">Nome do Item</Label>
@@ -274,7 +285,7 @@ export default function ItemsPage() {
                     <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes sobre o item, fornecedor, etc." />
                   </div>
               </div>
-              <SheetFooter className="pt-4">
+              <SheetFooter className="pt-4 mt-auto">
                 <SheetClose asChild>
                   <Button type="button" variant="outline">Cancelar</Button>
                 </SheetClose>
@@ -307,23 +318,32 @@ export default function ItemsPage() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <Card key={item.id} className="flex flex-col">
-              <CardHeader>
-                  <CardTitle className="text-lg">{item.name}</CardTitle>
-                  <CardDescription>{item.category || 'Sem categoria'}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                 {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
-              </CardContent>
-              <CardFooter className="flex justify-end">
-                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
-                    <Trash2 className="h-5 w-5" />
-                    <span className="sr-only">Excluir</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+          {items.map((item) => {
+            const config = categoryConfig[item.category] || categoryConfig.default;
+            const Icon = config.icon;
+            return (
+              <Card key={item.id} className={cn("flex flex-col border-t-4", config.color)}>
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{item.name}</CardTitle>
+                        <CardDescription>{item.category || 'Sem categoria'}</CardDescription>
+                      </div>
+                      <Icon className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                   {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
+                </CardContent>
+                <CardFooter className="flex justify-end pt-4">
+                   <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
+                      <Trash2 className="h-5 w-5" />
+                      <span className="sr-only">Excluir</span>
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })}
         </div>
       )}
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
@@ -345,3 +365,5 @@ export default function ItemsPage() {
     </>
   );
 }
+
+    
