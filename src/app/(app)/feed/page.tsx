@@ -313,9 +313,9 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string) => {
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
+        const youtubeRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w-]+(?:&[\w-=&]+)*|https?:\/\/youtu\.be\/[\w-]+)/;
         const match = text.match(youtubeRegex);
-        return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
+        return match ? match[0] : null;
     }
 
     const handlePostSubmit = useCallback(async () => {
@@ -327,13 +327,17 @@ export default function FeedPage() {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
             
+            let postContent = newPost;
             const videoUrl = getYouTubeUrl(newPost);
+            if (videoUrl) {
+                postContent = newPost.replace(videoUrl, '').trim();
+            }
             
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: newPost,
+                content: postContent,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
