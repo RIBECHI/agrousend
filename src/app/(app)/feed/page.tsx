@@ -154,7 +154,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
+                                <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive cursor-pointer">
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     <span>Excluir</span>
                                 </DropdownMenuItem>
@@ -340,7 +340,7 @@ export default function FeedPage() {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: textWithoutUrl,
+                content: newPost,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
@@ -374,18 +374,20 @@ export default function FeedPage() {
         if (!postId) return;
     
         const postRef = doc(firestore, 'posts', postId);
-        const commentsRef = collection(postRef, 'comments');
+        const commentsCollectionRef = collection(postRef, 'comments');
     
         try {
             // Get all comments and delete them in a batch
-            const commentsSnapshot = await getDocs(commentsRef);
-            const batch = writeBatch(firestore);
-            commentsSnapshot.forEach((commentDoc) => {
-                batch.delete(commentDoc.ref);
-            });
-            await batch.commit();
+            const commentsSnapshot = await getDocs(commentsCollectionRef);
+            if (!commentsSnapshot.empty) {
+                const batch = writeBatch(firestore);
+                commentsSnapshot.forEach((commentDoc) => {
+                    batch.delete(commentDoc.ref);
+                });
+                await batch.commit();
+            }
     
-            // Once comments are deleted, delete the post itself
+            // Once comments are deleted (or if there were none), delete the post itself
             await deleteDoc(postRef);
     
             toast({
