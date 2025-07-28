@@ -31,6 +31,9 @@ interface CatalogItem {
   category: string;
   description: string;
   userId: string;
+  fabricante?: string;
+  principioAtivo?: string;
+  formula?: string;
 }
 
 export default function ItemsPage() {
@@ -45,6 +48,9 @@ export default function ItemsPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [fabricante, setFabricante] = useState('');
+  const [principioAtivo, setPrincipioAtivo] = useState('');
+  const [formula, setFormula] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -89,6 +95,9 @@ export default function ItemsPage() {
     setName('');
     setCategory('');
     setDescription('');
+    setFabricante('');
+    setPrincipioAtivo('');
+    setFormula('');
     setIsSubmitting(false);
   }
 
@@ -105,13 +114,21 @@ export default function ItemsPage() {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(firestore, 'items'), {
+      const newItem: Omit<CatalogItem, 'id'> & { createdAt: any } = {
         userId: user.uid,
         name,
         category,
         description,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      if (category !== 'peças') {
+        newItem.fabricante = fabricante;
+        newItem.principioAtivo = principioAtivo;
+        newItem.formula = formula;
+      }
+
+      await addDoc(collection(firestore, 'items'), newItem);
 
       toast({
         title: "Sucesso!",
@@ -183,7 +200,7 @@ export default function ItemsPage() {
                   Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.
                 </SheetDescription>
               </SheetHeader>
-              <div className="space-y-4 py-6 flex-1">
+              <div className="space-y-4 py-6 flex-1 overflow-y-auto pr-6">
                   <div>
                     <Label htmlFor="name">Nome do Item</Label>
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Semente de Soja TMG 7063" required />
@@ -204,12 +221,30 @@ export default function ItemsPage() {
                         </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  
+                  {category && category !== 'peças' && (
+                    <div className="space-y-4 border-t pt-4">
+                        <div>
+                            <Label htmlFor="fabricante">Fabricante</Label>
+                            <Input id="fabricante" value={fabricante} onChange={(e) => setFabricante(e.target.value)} placeholder="Ex: Bayer, Syngenta" />
+                        </div>
+                        <div>
+                            <Label htmlFor="principioAtivo">Princípio Ativo</Label>
+                            <Input id="principioAtivo" value={principioAtivo} onChange={(e) => setPrincipioAtivo(e.target.value)} placeholder="Ex: Glifosato, Mancozebe" />
+                        </div>
+                        <div>
+                            <Label htmlFor="formula">Fórmula</Label>
+                            <Input id="formula" value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="Ex: C3H8NO5P" />
+                        </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4">
                     <Label htmlFor="description">Descrição</Label>
                     <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes sobre o item, fornecedor, etc." />
                   </div>
               </div>
-              <SheetFooter>
+              <SheetFooter className="pt-4">
                 <SheetClose asChild>
                   <Button type="button" variant="outline">Cancelar</Button>
                 </SheetClose>
