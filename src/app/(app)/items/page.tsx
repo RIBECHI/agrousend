@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, PlusCircle, Trash2, Tag } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,11 +81,11 @@ export default function ItemsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !name) {
+    if (!user || !name || !category) {
       toast({
         variant: "destructive",
-        title: "Campo obrigatório",
-        description: "O nome do item é obrigatório.",
+        title: "Campos obrigatórios",
+        description: "Nome do item e categoria são obrigatórios.",
       });
       return;
     }
@@ -176,7 +177,19 @@ export default function ItemsPage() {
                   </div>
                    <div>
                     <Label htmlFor="category">Categoria</Label>
-                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Sementes, Fertilizantes, Defensivos" />
+                    <Select value={category} onValueChange={setCategory}>
+                        <SelectTrigger id="category">
+                            <SelectValue placeholder="Selecione uma categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="fungicida">Fungicida</SelectItem>
+                            <SelectItem value="inseticida">Inseticida</SelectItem>
+                            <SelectItem value="fertilizante">Fertilizante</SelectItem>
+                            <SelectItem value="herbicida">Herbicida</SelectItem>
+                            <SelectItem value="sementes">Sementes</SelectItem>
+                            <SelectItem value="peças">Peças</SelectItem>
+                        </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="description">Descrição</Label>
