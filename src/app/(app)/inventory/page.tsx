@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, PlusCircle, Trash2, Package } from 'lucide-react';
 import {
@@ -28,6 +29,8 @@ interface InventoryItem {
   name: string;
   quantity: number;
   unit: string;
+  category: string;
+  description: string;
   userId: string;
 }
 
@@ -43,6 +46,8 @@ export default function InventoryPage() {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState('');
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -74,6 +79,8 @@ export default function InventoryPage() {
     setName('');
     setQuantity('');
     setUnit('');
+    setCategory('');
+    setDescription('');
     setIsSubmitting(false);
   }
 
@@ -95,6 +102,8 @@ export default function InventoryPage() {
         name,
         quantity: parseFloat(quantity),
         unit,
+        category,
+        description,
         createdAt: new Date(),
       });
 
@@ -173,13 +182,23 @@ export default function InventoryPage() {
                     <Label htmlFor="name">Nome do Item</Label>
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Semente de Soja" required />
                   </div>
-                  <div>
-                    <Label htmlFor="quantity">Quantidade</Label>
-                    <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Ex: 500" required />
+                   <div>
+                    <Label htmlFor="category">Categoria</Label>
+                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Sementes, Fertilizantes" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="quantity">Quantidade</Label>
+                      <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Ex: 500" required />
+                    </div>
+                     <div>
+                      <Label htmlFor="unit">Unidade</Label>
+                      <Input id="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Ex: Sacas, Litros" />
+                    </div>
                   </div>
                   <div>
-                    <Label htmlFor="unit">Unidade de Medida</Label>
-                    <Input id="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Ex: Sacas, Litros, Quilos" />
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes sobre o item" />
                   </div>
               </div>
               <SheetFooter>
@@ -217,13 +236,19 @@ export default function InventoryPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {items.map((item) => (
             <Card key={item.id} className="flex flex-col">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg">{item.name}</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between pb-2">
+                <div>
+                  <CardTitle className="text-lg">{item.name}</CardTitle>
+                  <CardDescription>{item.category || 'Sem categoria'}</CardDescription>
+                </div>
                 <Package className="h-6 w-6 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="flex-grow">
-                 <p className="text-3xl font-bold">{item.quantity}</p>
-                 <p className="text-sm text-muted-foreground">{item.unit || 'Unidades'}</p>
+              <CardContent className="flex-grow space-y-2">
+                 <div>
+                    <p className="text-3xl font-bold">{item.quantity}</p>
+                    <p className="text-sm text-muted-foreground">{item.unit || 'Unidades'}</p>
+                 </div>
+                 {item.description && <p className="text-sm text-muted-foreground pt-2 border-t mt-2">{item.description}</p>}
               </CardContent>
               <CardFooter className="flex justify-end">
                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
@@ -254,5 +279,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
