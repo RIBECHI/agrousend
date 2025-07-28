@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, orderBy, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -52,12 +52,16 @@ export default function ItemsPage() {
 
   useEffect(() => {
     if (!user) {
-        setIsLoading(false);
-        return;
-    };
+      setIsLoading(false);
+      return;
+    }
 
     const itemsCollection = collection(firestore, 'items');
-    const q = query(itemsCollection, where('userId', '==', user.uid));
+    const q = query(
+      itemsCollection,
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -66,11 +70,16 @@ export default function ItemsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar itens: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar itens",
+        description: "Não foi possível buscar os itens cadastrados.",
+      });
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, toast]);
 
   const resetForm = () => {
     setName('');
@@ -97,7 +106,7 @@ export default function ItemsPage() {
         name,
         category,
         description,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
 
       toast({

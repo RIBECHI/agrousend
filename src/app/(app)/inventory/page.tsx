@@ -4,13 +4,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, PlusCircle, Trash2, Package } from 'lucide-react';
 import {
@@ -56,7 +55,11 @@ export default function InventoryPage() {
     };
 
     const itemsCollection = collection(firestore, 'inventoryItems');
-    const q = query(itemsCollection, where('userId', '==', user.uid));
+    const q = query(
+        itemsCollection, 
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+    );
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -65,11 +68,16 @@ export default function InventoryPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar itens de estoque: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar estoque",
+        description: "Não foi possível buscar os itens do estoque.",
+      });
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, toast]);
 
   const resetForm = () => {
     setName('');
@@ -96,7 +104,7 @@ export default function InventoryPage() {
         name,
         quantity: parseFloat(quantity),
         unit,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
 
       toast({
