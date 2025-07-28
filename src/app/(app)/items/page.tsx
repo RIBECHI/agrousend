@@ -65,19 +65,22 @@ export default function ItemsPage() {
     );
     
     setIsLoading(true);
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatalogItem));
-      setItems(fetchedItems);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Erro ao buscar itens (verifique o índice do Firestore): ", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar itens",
-        description: "Não foi possível buscar os itens. Verifique o console para um link de criação de índice.",
-      });
-      setIsLoading(false);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatalogItem));
+        setItems(fetchedItems);
+        setIsLoading(false);
+      }, 
+      (error) => {
+        console.error("ERRO DO FIREBASE AQUI: ", error); // Alteração para facilitar a busca do erro
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar itens: Crie um índice no Firestore",
+          description: "Verifique o console do navegador para encontrar um link e criar o índice.",
+        });
+        setIsLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [user, toast]);
