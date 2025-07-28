@@ -117,7 +117,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
         let videoId = null;
         try {
             const urlObj = new URL(url);
-            if (urlObj.hostname === 'youtu.be') {
+             if (urlObj.hostname === 'youtu.be') {
                 videoId = urlObj.pathname.slice(1);
             } else if (urlObj.hostname.includes('youtube.com')) {
                 videoId = urlObj.searchParams.get('v');
@@ -167,10 +167,9 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                 {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
                 
                 {embedUrl ? (
-                     <div className="aspect-video rounded-lg overflow-hidden border">
+                     <div className="relative aspect-video rounded-lg overflow-hidden border">
                         <iframe
-                            width="100%"
-                            height="100%"
+                            className="absolute top-0 left-0 w-full h-full"
                             src={embedUrl}
                             title="YouTube video player"
                             frameBorder="0"
@@ -312,13 +311,13 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string): { url: string | null, textWithoutUrl: string } => {
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([\w-]{11})(?:\S+)?/g;
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([\w-]{11})(?:\S+)?/g;
         let url = null;
         let textWithoutUrl = text;
         
-        const match = youtubeRegex.exec(text);
+        const match = text.match(youtubeRegex);
         if (match) {
-            url = match[0]; // The full URL
+            url = match[0];
             textWithoutUrl = text.replace(youtubeRegex, '').trim();
         }
         
@@ -377,18 +376,21 @@ export default function FeedPage() {
         const commentsCollectionRef = collection(postRef, 'comments');
     
         try {
-            // Get all comments and delete them in a batch
+            const batch = writeBatch(firestore);
+            
+            // Get all comments and add delete operations to the batch
             const commentsSnapshot = await getDocs(commentsCollectionRef);
             if (!commentsSnapshot.empty) {
-                const batch = writeBatch(firestore);
                 commentsSnapshot.forEach((commentDoc) => {
                     batch.delete(commentDoc.ref);
                 });
-                await batch.commit();
             }
     
-            // Once comments are deleted (or if there were none), delete the post itself
-            await deleteDoc(postRef);
+            // Add the post delete operation to the batch
+            batch.delete(postRef);
+
+            // Commit the batch
+            await batch.commit();
     
             toast({
                 title: "Publicação excluída",
@@ -399,7 +401,7 @@ export default function FeedPage() {
             toast({
                 variant: "destructive",
                 title: "Erro ao excluir",
-                description: "Não foi possível remover a publicação. Tente novamente.",
+                description: "Não foi possível remover a publicação. Verifique as regras de segurança.",
             });
         } finally {
             setPostToDelete(null);
