@@ -52,7 +52,7 @@ interface Post {
   authorPhotoURL: string | null;
   content: string;
   imageUrl?: string;
-  videoId?: string; // Alterado de videoUrl para videoId
+  videoId?: string;
   createdAt: Timestamp;
   likes?: string[];
   comments?: Comment[];
@@ -151,7 +151,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
             <CardContent>
                 {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
                 
-                {embedUrl ? (
+                {embedUrl && (
                      <div className="relative aspect-video rounded-lg overflow-hidden border">
                         <iframe
                             className="absolute top-0 left-0 w-full h-full"
@@ -162,7 +162,8 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                             allowFullScreen
                         ></iframe>
                     </div>
-                ) : post.imageUrl && (
+                )}
+                {post.imageUrl && !embedUrl && (
                     <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
                         <Image
                             src={post.imageUrl}
@@ -295,19 +296,10 @@ export default function FeedPage() {
         }
     };
 
-    const getYouTubeVideoId = (text: string): { videoId: string | null, textWithoutUrl: string } => {
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/|user\/.+\/|attribution_link\?a=.*&u=%2Fwatch%3Fv%3D|e\/)?([\w-]{11})(?:\S+)?/g;
-        let videoId = null;
-        let textWithoutUrl = text;
-        
-        const match = youtubeRegex.exec(text);
-        if (match && match[1]) {
-            videoId = match[1];
-            // Remove the entire URL from the text
-            textWithoutUrl = text.replace(match[0], '').trim();
-        }
-        
-        return { videoId, textWithoutUrl };
+    const getYouTubeVideoId = (url: string): string | null => {
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/|user\/.+\/|attribution_link\?a=.*&u=%2Fwatch%3Fv%3D|e\/)?([\w-]{11})(?:\S+)?/;
+        const match = url.match(youtubeRegex);
+        return match ? match[1] : null;
     }
     
     const handlePostSubmit = useCallback(async () => {
@@ -319,13 +311,13 @@ export default function FeedPage() {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
             
-            const { videoId, textWithoutUrl } = getYouTubeVideoId(newPost);
+            const videoId = getYouTubeVideoId(newPost);
             
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: textWithoutUrl,
+                content: newPost, // Salva o texto completo
                 createdAt: serverTimestamp(),
                 likes: [],
             };
@@ -575,4 +567,3 @@ export default function FeedPage() {
   );
 }
 
-    
