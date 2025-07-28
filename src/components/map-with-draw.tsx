@@ -45,10 +45,19 @@ const MapWithDraw: React.FC<MapWithDrawProps> = ({ onDrawComplete, onMapStateCha
       });
       mapInstanceRef.current = map;
 
+      // Base layer with satellite imagery
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         maxZoom: 20,
       }).addTo(map);
+      
+      // Overlay layer with labels
+      L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '',
+        maxZoom: 20,
+        pane: 'shadowPane' // Ensures labels are drawn on top of other layers
+      }).addTo(map);
+
 
       // FeatureGroup to store editable layers
       const drawnItems = new L.FeatureGroup();
