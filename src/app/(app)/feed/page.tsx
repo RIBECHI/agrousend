@@ -100,9 +100,9 @@ export default function FeedPage() {
 
     const handlePostSubmit = useCallback(async () => {
         if ((!newPost.trim() && !imageFile) || !user) return;
-
+    
         setIsPosting(true);
-
+    
         try {
             const postData: {
                 authorId: string;
@@ -118,14 +118,14 @@ export default function FeedPage() {
                 content: newPost,
                 createdAt: serverTimestamp(),
             };
-
+    
             if (imageFile) {
                 const base64Image = await toBase64(imageFile);
                 postData.imageUrl = base64Image;
             }
-
+    
             await addDoc(collection(firestore, 'posts'), postData);
-
+    
             setNewPost('');
             removeImage();
         } catch (error: any) {
