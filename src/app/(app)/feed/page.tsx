@@ -319,7 +319,7 @@ export default function FeedPage() {
         const match = youtubeRegex.exec(text);
         if (match) {
             url = match[0]; // The full URL
-            textWithoutUrl = text.replace(url, '').trim();
+            textWithoutUrl = text.replace(youtubeRegex, '').trim();
         }
         
         return { url, textWithoutUrl };
@@ -340,7 +340,7 @@ export default function FeedPage() {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: newPost,
+                content: textWithoutUrl,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
@@ -590,5 +590,3 @@ export default function FeedPage() {
     </>
   );
 }
-
-    
