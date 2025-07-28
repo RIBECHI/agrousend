@@ -13,17 +13,30 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Leaf } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+
+type UserRole = 'producer' | 'supplier' | 'service_provider';
 
 export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('producer');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(!role) {
+        toast({
+            variant: 'destructive',
+            title: 'Campo obrigatório',
+            description: 'Por favor, selecione um tipo de conta.',
+        });
+        return;
+    }
+
     setIsLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -33,12 +46,12 @@ export default function SignUpPage() {
         displayName: name,
       });
 
-      // Store user information in Firestore
       await setDoc(doc(firestore, "users", user.uid), {
         uid: user.uid,
         displayName: name,
         email: user.email,
-        photoURL: user.photoURL
+        photoURL: user.photoURL,
+        role: role,
       });
 
       router.push('/feed');
@@ -67,6 +80,35 @@ export default function SignUpPage() {
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="grid gap-4">
+               <div className="grid gap-2">
+                <Label>Tipo de Conta</Label>
+                <RadioGroup 
+                    defaultValue="producer" 
+                    className="grid grid-cols-3 gap-4" 
+                    value={role} 
+                    onValueChange={(value: UserRole) => setRole(value)}
+                >
+                    <div>
+                        <RadioGroupItem value="producer" id="producer" className="peer sr-only" />
+                        <Label htmlFor="producer" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Produtor
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="supplier" id="supplier" className="peer sr-only" />
+                        <Label htmlFor="supplier" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Fornecedor
+                        </Label>
+                    </div>
+                     <div>
+                        <RadioGroupItem value="service_provider" id="service_provider" className="peer sr-only" />
+                        <Label htmlFor="service_provider" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                            Serviços
+                        </Label>
+                    </div>
+                </RadioGroup>
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="name">Nome Completo</Label>
                 <Input
