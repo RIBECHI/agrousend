@@ -26,23 +26,23 @@ service cloud.firestore {
       }
     }
 
-    // Regras para a coleção 'forumTopics' e sua subcoleção 'replies'
-    match /forumTopics/{topicId} {
-      allow create: if request.auth.uid == request.resource.data.authorId;
-      allow update: if request.auth != null; // Para atualizar contagem de respostas, etc.
-      allow delete: if request.auth.uid == resource.data.authorId;
-
-      match /replies/{replyId} {
-        allow create: if request.auth.uid == request.resource.data.authorId;
-        allow delete: if request.auth.uid == resource.data.authorId;
-      }
-    }
-
     // Regras para o Chat
     match /chats/{chatId} {
       allow read, write: if request.auth.uid in chatId.split('_');
       match /messages/{messageId} {
         allow read, write: if request.auth.uid in chatId.split('_');
+      }
+    }
+
+    // Regras para o Fórum
+    match /forumTopics/{topicId} {
+      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow update: if request.auth.uid != null; // Para atualizar contagem de respostas, etc.
+      allow delete: if request.auth.uid == resource.data.authorId;
+
+      match /replies/{replyId} {
+          allow create: if request.auth.uid == request.resource.data.authorId;
+          allow delete: if request.auth.uid == resource.data.authorId;
       }
     }
 
