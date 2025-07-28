@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc, updateDoc, arrayUnion, arrayRemove, getDocs, writeBatch } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -311,12 +311,20 @@ export default function FeedPage() {
         }
     };
 
-    const getYouTubeUrl = (text: string) => {
+    const getYouTubeUrl = (text: string): { url: string | null, textWithoutUrl: string } => {
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([\w-]{11})(?:\S+)?/g;
+        let url = null;
+        let textWithoutUrl = text;
+        
         const match = youtubeRegex.exec(text);
-        return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
+        if (match) {
+            url = match[0]; // The full URL
+            textWithoutUrl = text.replace(url, '').trim();
+        }
+        
+        return { url, textWithoutUrl };
     }
-
+    
     const handlePostSubmit = useCallback(async () => {
         if ((!newPost.trim() && !imageFile) || !user) return;
     
@@ -326,14 +334,13 @@ export default function FeedPage() {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
             
-            const videoUrl = getYouTubeUrl(newPost);
-            const postContent = videoUrl ? newPost.replace(videoUrl, '').trim() : newPost;
+            const { url: videoUrl, textWithoutUrl } = getYouTubeUrl(newPost);
             
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: postContent,
+                content: textWithoutUrl,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
@@ -366,28 +373,38 @@ export default function FeedPage() {
     const handleDeletePost = async (postId: string | null) => {
         if (!postId) return;
     
+        const postRef = doc(firestore, 'posts', postId);
+        const commentsRef = collection(postRef, 'comments');
+    
         try {
-            // Firestore security rules should handle subcollection deletion if configured with an extension.
-            // For client-side, we just delete the main document.
-            await deleteDoc(doc(firestore, 'posts', postId));
-
+            // Get all comments and delete them in a batch
+            const commentsSnapshot = await getDocs(commentsRef);
+            const batch = writeBatch(firestore);
+            commentsSnapshot.forEach((commentDoc) => {
+                batch.delete(commentDoc.ref);
+            });
+            await batch.commit();
+    
+            // Once comments are deleted, delete the post itself
+            await deleteDoc(postRef);
+    
             toast({
                 title: "Publicação excluída",
-                description: "Sua publicação foi removida com sucesso.",
+                description: "Sua publicação e todos os comentários foram removidos.",
             });
         } catch (error) {
             console.error("Erro ao excluir post: ", error);
             toast({
                 variant: "destructive",
                 title: "Erro ao excluir",
-                description: "Não foi possível remover a publicação. Verifique as regras de segurança do Firestore.",
+                description: "Não foi possível remover a publicação. Tente novamente.",
             });
         } finally {
             setPostToDelete(null);
             setShowDeleteAlert(false);
         }
     };
-
+    
     const handleLikeToggle = async (postId: string) => {
         if (!user) {
             toast({
@@ -557,7 +574,7 @@ export default function FeedPage() {
             <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
             <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Isso excluirá permanentemente a sua publicação.
+                Esta ação não pode ser desfeita. Isso excluirá permanentemente a sua publicação e todos os comentários associados.
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -571,3 +588,5 @@ export default function FeedPage() {
     </>
   );
 }
+
+    
