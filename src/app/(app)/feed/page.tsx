@@ -12,7 +12,7 @@ import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timest
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ImageIcon, X, MoreVertical, Trash2, Heart, MessageSquare } from 'lucide-react';
+import { ImageIcon, X, MoreVertical, Trash2, Heart, MessageSquare, Send } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +33,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
+
+interface Comment {
+    id: string;
+    authorId: string;
+    authorName: string;
+    authorPhotoURL: string | null;
+    content: string;
+    createdAt: Timestamp;
+}
 
 interface Post {
   id: string;
@@ -44,6 +54,7 @@ interface Post {
   imageUrl?: string;
   createdAt: Timestamp;
   likes?: string[];
+  comments?: Comment[];
 }
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -52,6 +63,157 @@ const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) 
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = error => reject(error);
 });
+
+const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Post, user: any, openDeleteDialog: (id: string) => void, handleLikeToggle: (id: string) => void }) => {
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [isCommenting, setIsCommenting] = useState(false);
+    const { toast } = useToast();
+    const hasLiked = user ? post.likes?.includes(user.uid) : false;
+
+    useEffect(() => {
+        const commentsCollection = collection(firestore, 'posts', post.id, 'comments');
+        const q = query(commentsCollection, orderBy('createdAt', 'asc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
+            setComments(fetchedComments);
+        }, (error) => {
+            console.error("Erro ao buscar comentários: ", error);
+        });
+
+        return () => unsubscribe();
+    }, [post.id]);
+
+    const handleCommentSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim() || !user) return;
+
+        setIsCommenting(true);
+        try {
+            const commentsCollection = collection(firestore, 'posts', post.id, 'comments');
+            await addDoc(commentsCollection, {
+                authorId: user.uid,
+                authorName: user.displayName || 'Anônimo',
+                authorPhotoURL: user.photoURL,
+                content: newComment,
+                createdAt: serverTimestamp(),
+            });
+            setNewComment('');
+        } catch (error) {
+            console.error("Erro ao adicionar comentário: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro",
+                description: "Não foi possível adicionar seu comentário.",
+            });
+        } finally {
+            setIsCommenting(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                        <Avatar>
+                            <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
+                            <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <CardTitle className="text-base">{post.authorName}</CardTitle>
+                            <CardDescription>
+                                {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
+                            </CardDescription>
+                        </div>
+                    </div>
+                    {user && user.uid === post.authorId && (
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <span>Excluir</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent>
+                {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
+                {post.imageUrl && (
+                    <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
+                        <Image
+                            src={post.imageUrl}
+                            alt="Imagem da publicação"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                    </div>
+                )}
+            </CardContent>
+                <CardFooter className="flex-col items-start pt-4 border-t">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => handleLikeToggle(post.id)}>
+                        <Heart className={cn("mr-2 h-5 w-5", hasLiked && "text-red-500 fill-current")} />
+                        <span>{post.likes?.length || 0}</span>
+                        <span className="sr-only">Curtir</span>
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                        <MessageSquare className="mr-2 h-5 w-5" />
+                        <span>{comments.length}</span>
+                        <span className="sr-only">Comentar</span>
+                    </Button>
+                </div>
+                
+                <div className="w-full space-y-4 mt-4">
+                    {comments.map(comment => (
+                        <div key={comment.id} className="flex items-start gap-3">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={comment.authorPhotoURL || undefined} alt={comment.authorName} />
+                                <AvatarFallback>{comment.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="bg-muted p-3 rounded-lg w-full">
+                                <div className="flex items-center justify-between">
+                                    <p className="font-semibold text-sm">{comment.authorName}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                         {comment.createdAt ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
+                                    </p>
+                                </div>
+                                <p className="text-sm mt-1">{comment.content}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <form onSubmit={handleCommentSubmit} className="w-full flex items-center gap-2 mt-4">
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src={user?.photoURL || undefined} />
+                        <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <Input 
+                        placeholder="Adicione um comentário..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        disabled={isCommenting}
+                        className="rounded-full"
+                    />
+                    <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting}>
+                        <Send className="h-5 w-5" />
+                    </Button>
+                </form>
+            </CardFooter>
+        </Card>
+    )
+};
+
 
 export default function FeedPage() {
     const { user, loading } = useAuth();
@@ -313,70 +475,15 @@ export default function FeedPage() {
             </Card>
 
             <div className="space-y-4">
-                {posts.map(post => {
-                    const hasLiked = user ? post.likes?.includes(user.uid) : false;
-                    return (
-                        <Card key={post.id}>
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <Avatar>
-                                            <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
-                                            <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <CardTitle className="text-base">{post.authorName}</CardTitle>
-                                            <CardDescription>
-                                                {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
-                                            </CardDescription>
-                                        </div>
-                                    </div>
-                                    {user && user.uid === post.authorId && (
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
-                                                    <MoreVertical className="h-5 w-5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    <span>Excluir</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
-                                {post.imageUrl && (
-                                    <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
-                                        <Image
-                                            src={post.imageUrl}
-                                            alt="Imagem da publicação"
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                        />
-                                    </div>
-                                )}
-                            </CardContent>
-                             <CardFooter className="flex items-center gap-4 pt-4 border-t">
-                                <Button variant="ghost" size="sm" onClick={() => handleLikeToggle(post.id)}>
-                                    <Heart className={cn("mr-2 h-5 w-5", hasLiked && "text-red-500 fill-current")} />
-                                    <span>{post.likes?.length || 0}</span>
-                                    <span className="sr-only">Curtir</span>
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                    <MessageSquare className="mr-2 h-5 w-5" />
-                                    <span>0</span> 
-                                    <span className="sr-only">Comentar</span>
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    )
-                })}
+                {posts.map(post => (
+                   <PostCard 
+                     key={post.id} 
+                     post={post} 
+                     user={user} 
+                     openDeleteDialog={openDeleteDialog} 
+                     handleLikeToggle={handleLikeToggle}
+                   />
+                ))}
                  {posts.length === 0 && !loading && (
                     <div className="text-center text-muted-foreground py-10">
                         <p>Ainda não há publicações.</p>
@@ -418,5 +525,3 @@ export default function FeedPage() {
     </>
   );
 }
-
-    
