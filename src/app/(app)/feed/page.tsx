@@ -52,6 +52,7 @@ interface Post {
   authorPhotoURL: string | null;
   content: string;
   imageUrl?: string;
+  videoUrl?: string;
   createdAt: Timestamp;
   likes?: string[];
   comments?: Comment[];
@@ -111,6 +112,19 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
             setIsCommenting(false);
         }
     };
+    
+    const getYouTubeEmbedUrl = (url: string) => {
+        let videoId = null;
+        const urlObj = new URL(url);
+        if (urlObj.hostname === 'youtu.be') {
+            videoId = urlObj.pathname.slice(1);
+        } else if (urlObj.hostname.includes('youtube.com')) {
+            videoId = urlObj.searchParams.get('v');
+        }
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+    }
+    
+    const embedUrl = post.videoUrl ? getYouTubeEmbedUrl(post.videoUrl) : null;
 
     return (
         <Card>
@@ -147,7 +161,22 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
             </CardHeader>
             <CardContent>
                 {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
-                {post.imageUrl && (
+                
+                {embedUrl && (
+                     <div className="aspect-video rounded-lg overflow-hidden border">
+                        <iframe
+                            width="100%"
+                            height="100%"
+                            src={embedUrl}
+                            title="YouTube video player"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                )}
+                
+                {post.imageUrl && !embedUrl && (
                     <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
                         <Image
                             src={post.imageUrl}
@@ -278,6 +307,11 @@ export default function FeedPage() {
         }
     };
 
+    const getYouTubeUrl = (text: string) => {
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/;
+        const match = text.match(youtubeRegex);
+        return match ? match[0] : null;
+    }
 
     const handlePostSubmit = useCallback(async () => {
         if ((!newPost.trim() && !imageFile) || !user) return;
@@ -287,6 +321,8 @@ export default function FeedPage() {
         try {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
+            
+            const videoUrl = getYouTubeUrl(newPost);
     
             const postData: Omit<Post, 'createdAt'> & { createdAt: any, likes: any[] } = {
                 id: newPostRef.id,
@@ -300,6 +336,10 @@ export default function FeedPage() {
     
             if (imageFile) {
                 postData.imageUrl = await toBase64(imageFile);
+            }
+
+            if (videoUrl) {
+                postData.videoUrl = videoUrl;
             }
     
             await setDoc(newPostRef, postData);
@@ -440,7 +480,7 @@ export default function FeedPage() {
                 <CardContent>
                     <div className="grid gap-4">
                         <Textarea
-                            placeholder={`No que você está pensando, ${user.displayName || 'Produtor'}?`}
+                            placeholder={`No que você está pensando, ${user.displayName || 'Produtor'}? Cole um link do YouTube!`}
                             value={newPost}
                             onChange={(e) => setNewPost(e.target.value)}
                             rows={4}
