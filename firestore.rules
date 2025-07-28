@@ -3,24 +3,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Regras para a coleção 'posts'
     match /posts/{postId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
     }
 
-    // Regras para a coleção 'farmPlots'
     match /farmPlots/{plotId} {
-      // Permite ler (get, list) um documento se o userId do documento corresponder ao uid do usuário.
-      // A regra de 'list' funciona porque o código do cliente sempre filtra por userId.
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-
-      // Permite criar (create) um documento se o userId do *novo* documento corresponder ao uid do usuário.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-
-      // Permite atualizar ou deletar (update, delete) um documento se o userId do documento *existente* corresponder ao uid do usuário.
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }

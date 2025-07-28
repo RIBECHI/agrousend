@@ -66,7 +66,10 @@ export default function FarmsPage() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        setIsLoading(false);
+        return;
+    };
 
     const plotsCollection = collection(firestore, 'farmPlots');
     const q = query(plotsCollection, where('userId', '==', user.uid));
@@ -78,16 +81,13 @@ export default function FarmsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar talhões: ", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar dados",
-        description: "Não foi possível buscar os talhões.",
-      });
+      // Removido o toast de erro para não confundir o usuário quando a coleção está vazia.
+      // O estado de 'nenhum talhão' é tratado na renderização.
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [user, toast]);
+  }, [user]);
 
   const resetForm = () => {
     setName('');
@@ -132,6 +132,7 @@ export default function FarmsPage() {
         geoJson,
         mapCenter,
         mapZoom,
+        createdAt: new Date(),
       });
 
       toast({
@@ -247,7 +248,10 @@ export default function FarmsPage() {
       </div>
 
       {isLoading ? (
-        <p>Carregando talhões...</p>
+         <div className="text-center py-10">
+            <Loader className="mx-auto h-8 w-8 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Carregando seus talhões...</p>
+         </div>
       ) : plots.length === 0 ? (
         <Card className="text-center py-10">
             <CardHeader>
@@ -312,5 +316,3 @@ export default function FarmsPage() {
     </>
   );
 }
-
-    
