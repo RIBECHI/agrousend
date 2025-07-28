@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Package } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Tag } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,26 +24,26 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-interface InventoryItem {
+interface CatalogItem {
   id: string;
   name: string;
-  quantity: number;
-  unit: string;
+  category: string;
+  description: string;
   userId: string;
 }
 
-export default function InventoryPage() {
+export default function ItemsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [items, setItems] = useState<CatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   // State for the form
   const [name, setName] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [unit, setUnit] = useState('');
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -55,16 +55,16 @@ export default function InventoryPage() {
         return;
     };
 
-    const itemsCollection = collection(firestore, 'inventoryItems');
+    const itemsCollection = collection(firestore, 'items');
     const q = query(itemsCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryItem));
+      const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CatalogItem));
       setItems(fetchedItems);
       setIsLoading(false);
     }, (error) => {
-      console.error("Erro ao buscar itens de estoque: ", error);
+      console.error("Erro ao buscar itens: ", error);
       setIsLoading(false);
     });
 
@@ -73,46 +73,46 @@ export default function InventoryPage() {
 
   const resetForm = () => {
     setName('');
-    setQuantity('');
-    setUnit('');
+    setCategory('');
+    setDescription('');
     setIsSubmitting(false);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !name || !quantity) {
+    if (!user || !name) {
       toast({
         variant: "destructive",
-        title: "Campos obrigatórios",
-        description: "Nome e quantidade são obrigatórios.",
+        title: "Campo obrigatório",
+        description: "O nome do item é obrigatório.",
       });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(firestore, 'inventoryItems'), {
+      await addDoc(collection(firestore, 'items'), {
         userId: user.uid,
         name,
-        quantity: parseFloat(quantity),
-        unit,
+        category,
+        description,
         createdAt: new Date(),
       });
 
       toast({
         title: "Sucesso!",
-        description: "Item adicionado ao estoque.",
+        description: "Item cadastrado com sucesso.",
       });
       
       resetForm();
       setIsSheetOpen(false);
 
     } catch (error) {
-      console.error("Erro ao adicionar item: ", error);
+      console.error("Erro ao cadastrar item: ", error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Não foi possível adicionar o item.",
+        description: "Não foi possível cadastrar o item.",
       });
     } finally {
       setIsSubmitting(false);
@@ -128,10 +128,10 @@ export default function InventoryPage() {
     if (!itemId) return;
 
     try {
-        await deleteDoc(doc(firestore, 'inventoryItems', itemId));
+        await deleteDoc(doc(firestore, 'items', itemId));
         toast({
             title: "Item excluído",
-            description: "O item foi removido do seu estoque.",
+            description: "O item foi removido do seu cadastro.",
         });
     } catch (error) {
         console.error("Erro ao excluir o item: ", error);
@@ -150,7 +150,7 @@ export default function InventoryPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Controle de Estoque</h1>
+        <h1 className="text-2xl font-bold">Cadastro de Itens</h1>
         <Sheet open={isSheetOpen} onOpenChange={(open) => {
             if(!open) resetForm();
             setIsSheetOpen(open);
@@ -158,31 +158,29 @@ export default function InventoryPage() {
           <SheetTrigger asChild>
             <Button>
               <PlusCircle className="mr-2" />
-              Adicionar Item ao Estoque
+              Cadastrar Novo Item
             </Button>
           </SheetTrigger>
           <SheetContent>
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
               <SheetHeader>
-                <SheetTitle>Adicionar Item ao Estoque</SheetTitle>
+                <SheetTitle>Cadastrar Novo Item</SheetTitle>
                 <SheetDescription>
-                  Preencha as informações do item que deseja adicionar ao estoque.
+                  Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 py-6 flex-1">
                   <div>
                     <Label htmlFor="name">Nome do Item</Label>
-                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Semente de Soja" required />
+                    <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Semente de Soja TMG 7063" required />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="quantity">Quantidade</Label>
-                      <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Ex: 500" required />
-                    </div>
-                     <div>
-                      <Label htmlFor="unit">Unidade</Label>
-                      <Input id="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="Ex: Sacas, Litros" />
-                    </div>
+                   <div>
+                    <Label htmlFor="category">Categoria</Label>
+                    <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Ex: Sementes, Fertilizantes, Defensivos" />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes sobre o item, fornecedor, etc." />
                   </div>
               </div>
               <SheetFooter>
@@ -201,36 +199,31 @@ export default function InventoryPage() {
       {isLoading ? (
          <div className="text-center py-10">
             <Loader className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Carregando seu estoque...</p>
+            <p className="mt-4 text-muted-foreground">Carregando seus itens...</p>
          </div>
       ) : items.length === 0 ? (
         <Card className="text-center py-10">
             <CardHeader>
-                <CardTitle>Seu estoque está vazio</CardTitle>
-                <CardDescription>Comece adicionando seu primeiro item para gerenciá-lo aqui.</CardDescription>
+                <CardTitle>Nenhum item cadastrado</CardTitle>
+                <CardDescription>Comece cadastrando seu primeiro item para poder gerenciá-lo aqui.</CardDescription>
             </CardHeader>
              <CardContent>
                 <Button onClick={() => setIsSheetOpen(true)}>
                     <PlusCircle className="mr-2"/>
-                    Adicionar Primeiro Item
+                    Cadastrar Primeiro Item
                 </Button>
             </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <Card key={item.id} className="flex flex-col">
-              <CardHeader className="flex flex-row items-start justify-between pb-2">
-                <div>
+              <CardHeader>
                   <CardTitle className="text-lg">{item.name}</CardTitle>
-                </div>
-                <Package className="h-6 w-6 text-muted-foreground" />
+                  <CardDescription>{item.category || 'Sem categoria'}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow space-y-2">
-                 <div>
-                    <p className="text-3xl font-bold">{item.quantity}</p>
-                    <p className="text-sm text-muted-foreground">{item.unit || 'Unidades'}</p>
-                 </div>
+              <CardContent className="flex-grow">
+                 {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
               </CardContent>
               <CardFooter className="flex justify-end">
                  <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
@@ -247,7 +240,7 @@ export default function InventoryPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o item do seu estoque.
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o item do seu cadastro.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

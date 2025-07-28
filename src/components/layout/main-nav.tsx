@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Settings,
   LayoutDashboard,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const topLevelNavItems = [
 
 const managementNavItems = [
     { href: '/farms', label: 'Gestão de Talhões', icon: Tractor },
+    { href: '/items', label: 'Cadastro de Itens', icon: Tag },
     { href: '/inventory', label: 'Controle de Estoque', icon: Warehouse },
 ]
 
