@@ -87,15 +87,20 @@ export default function ProfilePage() {
       }
 
       // Update Firebase Auth profile
-      await updateProfile(auth.currentUser!, {
-        displayName,
-        photoURL,
-      });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName,
+          photoURL,
+        });
+      }
+
 
       // Update/Create Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
+        uid: user.uid,
         displayName,
+        email: user.email,
         role,
         photoURL,
       }, { merge: true });
@@ -116,13 +121,13 @@ export default function ProfilePage() {
 
 
   const handleDeleteAccount = async () => {
-    if (!user) return;
+    if (!user || !auth.currentUser) return;
 
     setIsDeleting(true);
     try {
       const userDocRef = doc(firestore, 'users', user.uid);
       await deleteDoc(userDocRef);
-      await deleteUser(auth.currentUser!);
+      await deleteUser(auth.currentUser);
 
       toast({
         title: 'Conta excluída',
