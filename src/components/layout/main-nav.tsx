@@ -19,6 +19,7 @@ import {
   Settings,
   LayoutDashboard,
   Tag,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { useAuth } from '@/contexts/auth-context';
 const topLevelNavItems = [
   { href: '/feed', label: 'Feed', icon: Home },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/market', label: 'Anúncios Rurais', icon: Newspaper },
+  { href: '/market', label: 'Marketplace', icon: Store },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/forum', label: 'Fórum', icon: MessagesSquare },
   { href: '/events', label: 'Eventos', icon: CalendarDays },
