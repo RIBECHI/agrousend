@@ -58,6 +58,7 @@ export default function FeedPage() {
     const [isPosting, setIsPosting] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [postToDelete, setPostToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
@@ -99,11 +100,11 @@ export default function FeedPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.size > 1 * 1024 * 1024) {
+            if (file.size > 1 * 1024 * 1024) { // 1MB limit
                 toast({
                     variant: "destructive",
                     title: "Imagem muito grande",
-                    description: "Para evitar custos e problemas de performance, selecione uma imagem com menos de 1MB.",
+                    description: "Por favor, selecione uma imagem com menos de 1MB.",
                 });
                 return;
             }
@@ -155,11 +156,11 @@ export default function FeedPage() {
         }
     }, [newPost, imageFile, user, removeImage, toast]);
 
-    const handleDeletePost = async () => {
-        if (!postToDelete) return;
+    const handleDeletePost = async (postId: string | null) => {
+        if (!postId) return;
     
         try {
-            const postRef = doc(firestore, 'posts', postToDelete);
+            const postRef = doc(firestore, 'posts', postId);
             await deleteDoc(postRef);
             toast({
                 title: "Publicação excluída",
@@ -174,8 +175,14 @@ export default function FeedPage() {
             });
         } finally {
             setPostToDelete(null);
+            setShowDeleteAlert(false);
         }
     };
+
+    const openDeleteDialog = (postId: string) => {
+        setPostToDelete(postId);
+        setShowDeleteAlert(true);
+    }
 
     if (loading) {
         return (
@@ -291,7 +298,7 @@ export default function FeedPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => setPostToDelete(post.id)} className="text-destructive">
+                                            <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 <span>Excluir</span>
                                             </DropdownMenuItem>
@@ -338,7 +345,7 @@ export default function FeedPage() {
         </aside>
     </div>
 
-    <AlertDialog open={!!postToDelete} onOpenChange={(isOpen) => !isOpen && setPostToDelete(null)}>
+    <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
             <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -347,8 +354,8 @@ export default function FeedPage() {
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPostToDelete(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeletePost} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogCancel onClick={() => setShowDeleteAlert(false)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDeletePost(postToDelete)} className="bg-destructive hover:bg-destructive/90">
                 Excluir
             </AlertDialogAction>
             </AlertDialogFooter>
