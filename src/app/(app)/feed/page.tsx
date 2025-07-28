@@ -70,6 +70,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [isCommenting, setIsCommenting] = useState(false);
+    const [showCommentInput, setShowCommentInput] = useState(false);
     const { toast } = useToast();
     const hasLiked = user ? post.likes?.includes(user.uid) : false;
 
@@ -102,6 +103,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                 createdAt: serverTimestamp(),
             });
             setNewComment('');
+            setShowCommentInput(false); // Oculta o campo após o envio
         } catch (error) {
             console.error("Erro ao adicionar comentário: ", error);
             toast({
@@ -202,7 +204,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                         <span>Curtir</span>
                     </Button>
                      <div className="border-l h-auto my-2"></div>
-                    <Button variant="ghost" className="w-full rounded-none">
+                    <Button variant="ghost" className="w-full rounded-none" onClick={() => setShowCommentInput(!showCommentInput)}>
                         <MessageSquare className="mr-2 h-5 w-5" />
                         <span>Comentar</span>
                     </Button>
@@ -216,6 +218,26 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
 
 
             <CardFooter className="flex-col items-start pt-4">
+                {showCommentInput && user && (
+                  <form onSubmit={handleCommentSubmit} className="w-full flex items-center gap-2 mb-4">
+                      <Avatar className="h-9 w-9">
+                          <AvatarImage src={user?.photoURL || undefined} />
+                          <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <Input 
+                          placeholder="Adicione um comentário..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          disabled={isCommenting}
+                          className="rounded-full bg-muted focus-visible:ring-1"
+                          autoFocus
+                      />
+                      <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting} className="rounded-full">
+                          <Send className="h-5 w-5" />
+                      </Button>
+                  </form>
+                )}
+
                 <div className="w-full space-y-4">
                     {comments.map(comment => (
                         <div key={comment.id} className="flex items-start gap-3">
@@ -235,25 +257,6 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                         </div>
                     ))}
                 </div>
-
-                {user && (
-                  <form onSubmit={handleCommentSubmit} className="w-full flex items-center gap-2 mt-4">
-                      <Avatar className="h-9 w-9">
-                          <AvatarImage src={user?.photoURL || undefined} />
-                          <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <Input 
-                          placeholder="Adicione um comentário..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          disabled={isCommenting}
-                          className="rounded-full bg-muted focus-visible:ring-1"
-                      />
-                      <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting} className="rounded-full">
-                          <Send className="h-5 w-5" />
-                      </Button>
-                  </form>
-                )}
             </CardFooter>
         </Card>
     )
@@ -336,9 +339,8 @@ export default function FeedPage() {
     
         try {
             const postsCollection = collection(firestore, 'posts');
-            const newPostRef = doc(postsCollection);
             
-            const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
+            const postData: Omit<Post, 'id' | 'createdAt' | 'comments'> & { createdAt: any; likes: any[]; videoId?: string; imageUrl?: string } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
@@ -356,7 +358,7 @@ export default function FeedPage() {
                 postData.videoId = videoId;
             }
     
-            await setDoc(newPostRef, postData);
+            await addDoc(postsCollection, postData);
     
             setNewPost('');
             removeImage();
@@ -593,5 +595,7 @@ export default function FeedPage() {
   );
 }
 
+
+    
 
     
