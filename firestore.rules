@@ -1,12 +1,19 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Regras para a coleção de posts
     match /posts/{postId} {
-      // Permite que usuários autenticados leiam e criem postagens
-      allow read, create: if request.auth != null;
-      // Permite que o autor de uma postagem a atualize ou exclua
-      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+    }
+
+    // Regras para a coleção de talhões (farm plots)
+    match /farmPlots/{plotId} {
+      allow read, write, delete: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
