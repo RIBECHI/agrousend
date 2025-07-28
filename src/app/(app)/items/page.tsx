@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Leaf, Spray, Bug, Beaker, Cog, Tractor } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Leaf, SprayCan, Bug, Beaker, Cog, Tractor } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -42,7 +42,7 @@ interface CatalogItem {
 }
 
 const categoryConfig: { [key: string]: { icon: React.ElementType, color: string } } = {
-  fungicida: { icon: Spray, color: 'border-t-blue-500' },
+  fungicida: { icon: SprayCan, color: 'border-t-blue-500' },
   inseticida: { icon: Bug, color: 'border-t-red-500' },
   fertilizante: { icon: Beaker, color: 'border-t-green-500' },
   herbicida: { icon: Leaf, color: 'border-t-yellow-500' },
@@ -365,5 +365,7 @@ export default function ItemsPage() {
     </>
   );
 }
+
+    
 
     
