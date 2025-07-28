@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -18,15 +17,10 @@ service cloud.firestore {
 
     // Regras para a coleção 'farmPlots'
     match /farmPlots/{plotId} {
-      // Um usuário pode listar os talhões se a consulta filtrar pelo seu próprio userId.
-      // Esta é a maneira correta e segura de permitir consultas em listas.
-      allow list: if request.auth != null && request.auth.uid == request.query.filters.userId;
-      
-      // Um usuário pode ler, atualizar ou excluir um talhão se ele for o dono.
-      allow get, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      
-      // Um usuário pode criar um talhão se o userId do novo documento for o seu próprio UID.
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Permite que um usuário leia (get, list) ou escreva (create, update, delete) 
+      // em um talhão apenas se o 'userId' do documento corresponder ao UID do usuário autenticado.
+      // Isso garante que os usuários só possam acessar e modificar seus próprios dados.
+      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
   }
 }
