@@ -115,11 +115,16 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
     
     const getYouTubeEmbedUrl = (url: string) => {
         let videoId = null;
-        const urlObj = new URL(url);
-        if (urlObj.hostname === 'youtu.be') {
-            videoId = urlObj.pathname.slice(1);
-        } else if (urlObj.hostname.includes('youtube.com')) {
-            videoId = urlObj.searchParams.get('v');
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === 'youtu.be') {
+                videoId = urlObj.pathname.slice(1);
+            } else if (urlObj.hostname.includes('youtube.com')) {
+                videoId = urlObj.searchParams.get('v');
+            }
+        } catch (e) {
+            // Se a URL for inválida, apenas retorna null.
+            return null;
         }
         return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
     }
@@ -162,7 +167,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
             <CardContent>
                 {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
                 
-                {embedUrl && (
+                {embedUrl ? (
                      <div className="aspect-video rounded-lg overflow-hidden border">
                         <iframe
                             width="100%"
@@ -174,9 +179,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                             allowFullScreen
                         ></iframe>
                     </div>
-                )}
-                
-                {post.imageUrl && !embedUrl && (
+                ) : post.imageUrl && (
                     <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
                         <Image
                             src={post.imageUrl}
@@ -222,22 +225,24 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                     ))}
                 </div>
 
-                <form onSubmit={handleCommentSubmit} className="w-full flex items-center gap-2 mt-4">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src={user?.photoURL || undefined} />
-                        <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <Input 
-                        placeholder="Adicione um comentário..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        disabled={isCommenting}
-                        className="rounded-full"
-                    />
-                    <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting}>
-                        <Send className="h-5 w-5" />
-                    </Button>
-                </form>
+                {user && (
+                  <form onSubmit={handleCommentSubmit} className="w-full flex items-center gap-2 mt-4">
+                      <Avatar className="h-9 w-9">
+                          <AvatarImage src={user?.photoURL || undefined} />
+                          <AvatarFallback>{user?.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <Input 
+                          placeholder="Adicione um comentário..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          disabled={isCommenting}
+                          className="rounded-full"
+                      />
+                      <Button type="submit" size="icon" disabled={!newComment.trim() || isCommenting}>
+                          <Send className="h-5 w-5" />
+                      </Button>
+                  </form>
+                )}
             </CardFooter>
         </Card>
     )
@@ -308,9 +313,9 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string) => {
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/;
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
         const match = text.match(youtubeRegex);
-        return match ? match[0] : null;
+        return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
     }
 
     const handlePostSubmit = useCallback(async () => {
@@ -324,8 +329,7 @@ export default function FeedPage() {
             
             const videoUrl = getYouTubeUrl(newPost);
     
-            const postData: Omit<Post, 'createdAt'> & { createdAt: any, likes: any[] } = {
-                id: newPostRef.id,
+            const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
