@@ -5,22 +5,21 @@ service cloud.firestore {
 
     // Regras para a coleção 'posts'
     match /posts/{postId} {
-      // Qualquer pessoa (logada ou não) pode ler as publicações.
+      // Qualquer pessoa pode ler as publicações.
       allow read: if true;
-
-      // Um usuário autenticado pode criar uma publicação se o authorId for o seu próprio UID.
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-
-      // Um usuário autenticado só pode atualizar ou excluir suas próprias publicações.
-      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      // Um usuário autenticado pode criar, atualizar e excluir suas próprias publicações.
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.authorId;
     }
 
     // Regras para a coleção 'farmPlots'
     match /farmPlots/{plotId} {
-      // Permite que um usuário leia (get, list) ou escreva (create, update, delete)
-      // um documento se o 'userId' do documento corresponder ao UID do usuário autenticado.
-      // Esta única regra abrange todos os casos necessários de forma segura.
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Permite ler (get) e escrever (create, update, delete) em um documento específico
+      // se o userId do documento corresponder ao uid do usuário.
+      allow get, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Permite listar (query) documentos apenas se a consulta filtrar explicitamente
+      // pelo userId do usuário logado.
+      allow list: if request.auth != null && request.query.filters.size() > 0 && request.query.filters[0].field.string_value == 'userId' && request.query.filters[0].value.string_value == request.auth.uid;
     }
   }
 }
