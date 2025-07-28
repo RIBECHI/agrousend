@@ -1,19 +1,30 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regras para a coleção de posts
+
+    // Regras para a coleção 'posts'
     match /posts/{postId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow update: if request.auth.uid == resource.data.authorId;
+      allow delete: if request.auth.uid == resource.data.authorId;
     }
 
-    // Regras para a coleção de talhões (farm plots)
+    // Regras para a coleção 'farmPlots' (Talhões)
     match /farmPlots/{plotId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Permite a um usuário ler um documento se o seu uid corresponder ao userId no documento.
+      allow get: if request.auth.uid == resource.data.userId;
+      
+      // Permite a um usuário listar (query) seus próprios talhões.
+      // A consulta no frontend DEVE incluir `where('userId', '==', request.auth.uid)`.
+      allow list: if request.auth.uid == request.query.filters.userId;
+
+      // Permite a um usuário criar um documento se o userId no novo documento corresponder ao seu uid.
+      allow create: if request.auth.uid == request.resource.data.userId;
+
+      // Permite a um usuário atualizar ou deletar um documento se ele for o proprietário.
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
   }
 }
