@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -123,7 +123,6 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                 videoId = urlObj.searchParams.get('v');
             }
         } catch (e) {
-            // Se a URL for inválida, apenas retorna null.
             return null;
         }
         return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
@@ -313,7 +312,7 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string) => {
-        const youtubeRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w-]+(?:&[\w-=&]+)*|https?:\/\/youtu\.be\/[\w-]+)/;
+        const youtubeRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})(?:\S+)?)/;
         const match = text.match(youtubeRegex);
         return match ? match[0] : null;
     }
@@ -329,6 +328,7 @@ export default function FeedPage() {
             
             let postContent = newPost;
             const videoUrl = getYouTubeUrl(newPost);
+            
             if (videoUrl) {
                 postContent = newPost.replace(videoUrl, '').trim();
             }
@@ -372,7 +372,18 @@ export default function FeedPage() {
     
         try {
             const postRef = doc(firestore, 'posts', postId);
+            
+            // 1. Delete all comments in the subcollection
+            const commentsRef = collection(postRef, 'comments');
+            const commentsSnapshot = await getDocs(commentsRef);
+            const deletePromises = commentsSnapshot.docs.map((commentDoc) => 
+                deleteDoc(commentDoc.ref)
+            );
+            await Promise.all(deletePromises);
+            
+            // 2. Delete the post itself
             await deleteDoc(postRef);
+
             toast({
                 title: "Publicação excluída",
                 description: "Sua publicação foi removida com sucesso.",
