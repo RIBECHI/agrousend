@@ -8,14 +8,30 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ImageIcon, X } from 'lucide-react';
+import { ImageIcon, X, MoreVertical, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 
 interface Post {
@@ -24,11 +40,10 @@ interface Post {
   authorName: string;
   authorPhotoURL: string | null;
   content: string;
-  imageUrl?: string; // Will store Base64 string
+  imageUrl?: string;
   createdAt: Timestamp;
 }
 
-// Helper to convert file to Base64
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -43,6 +58,7 @@ export default function FeedPage() {
     const [isPosting, setIsPosting] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [postToDelete, setPostToDelete] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
@@ -83,17 +99,17 @@ export default function FeedPage() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            // 1MB limit for Base64 storage in Firestore
             if (file.size > 1 * 1024 * 1024) {
                 toast({
                     variant: "destructive",
                     title: "Imagem muito grande",
-                    description: "Para evitar custos, selecione uma imagem com menos de 1MB.",
+                    description: "Para evitar custos e problemas de performance, selecione uma imagem com menos de 1MB.",
                 });
                 return;
             }
             setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+            const previewUrl = URL.createObjectURL(file);
+            setImagePreview(previewUrl);
         }
     };
 
@@ -120,8 +136,7 @@ export default function FeedPage() {
             };
     
             if (imageFile) {
-                const base64Image = await toBase64(imageFile);
-                postData.imageUrl = base64Image;
+                postData.imageUrl = await toBase64(imageFile);
             }
     
             await addDoc(collection(firestore, 'posts'), postData);
@@ -139,6 +154,28 @@ export default function FeedPage() {
             setIsPosting(false);
         }
     }, [newPost, imageFile, user, removeImage, toast]);
+
+    const handleDeletePost = async () => {
+        if (!postToDelete) return;
+    
+        try {
+            const postRef = doc(firestore, 'posts', postToDelete);
+            await deleteDoc(postRef);
+            toast({
+                title: "Publicação excluída",
+                description: "Sua publicação foi removida com sucesso.",
+            });
+        } catch (error) {
+            console.error("Erro ao excluir post: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro ao excluir",
+                description: "Não foi possível remover a publicação.",
+            });
+        } finally {
+            setPostToDelete(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -185,6 +222,7 @@ export default function FeedPage() {
     }
 
   return (
+    <>
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
              <Card>
@@ -232,17 +270,34 @@ export default function FeedPage() {
                 {posts.map(post => (
                     <Card key={post.id}>
                         <CardHeader>
-                            <div className="flex items-center gap-3">
-                                <Avatar>
-                                    <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
-                                    <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <CardTitle className="text-base">{post.authorName}</CardTitle>
-                                    <CardDescription>
-                                        {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
-                                    </CardDescription>
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
+                                        <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <CardTitle className="text-base">{post.authorName}</CardTitle>
+                                        <CardDescription>
+                                            {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
+                                        </CardDescription>
+                                    </div>
                                 </div>
+                                {user && user.uid === post.authorId && (
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <MoreVertical className="h-5 w-5" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setPostToDelete(post.id)} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Excluir</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -282,5 +337,23 @@ export default function FeedPage() {
             </Card>
         </aside>
     </div>
+
+    <AlertDialog open={!!postToDelete} onOpenChange={(isOpen) => !isOpen && setPostToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Isso excluirá permanentemente a sua publicação.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPostToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePost} className="bg-destructive hover:bg-destructive/90">
+                Excluir
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
