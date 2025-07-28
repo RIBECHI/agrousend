@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -121,14 +121,11 @@ export default function FeedPage() {
         setIsPosting(true);
     
         try {
-            const postData: {
-                authorId: string;
-                authorName: string;
-                authorPhotoURL: string | null;
-                content: string;
-                createdAt: any;
-                imageUrl?: string;
-            } = {
+            const postsCollection = collection(firestore, 'posts');
+            const newPostRef = doc(postsCollection); // Cria uma referência com ID único
+    
+            const postData: Omit<Post, 'createdAt'> & { createdAt: any } = {
+                id: newPostRef.id,
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
@@ -140,7 +137,7 @@ export default function FeedPage() {
                 postData.imageUrl = await toBase64(imageFile);
             }
     
-            await addDoc(collection(firestore, 'posts'), postData);
+            await setDoc(newPostRef, postData); // Usa setDoc para salvar com o ID já definido
     
             setNewPost('');
             removeImage();
@@ -155,6 +152,7 @@ export default function FeedPage() {
             setIsPosting(false);
         }
     }, [newPost, imageFile, user, removeImage, toast]);
+    
 
     const handleDeletePost = async (postId: string | null) => {
         if (!postId) return;
