@@ -116,13 +116,14 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
     const getYouTubeEmbedUrl = (url: string) => {
         let videoId = null;
         try {
-            const urlObj = new URL(url);
-             if (urlObj.hostname === 'youtu.be') {
-                videoId = urlObj.pathname.slice(1);
-            } else if (urlObj.hostname.includes('youtube.com')) {
-                videoId = urlObj.searchParams.get('v');
+            // Regex to find YouTube video ID in various URL formats
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regex);
+            if (match && match[1]) {
+                videoId = match[1];
             }
         } catch (e) {
+            console.error("Error parsing YouTube URL", e);
             return null;
         }
         return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
@@ -147,7 +148,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                         </div>
                     </div>
                     {user && user.uid === post.authorId && (
-                            <DropdownMenu>
+                        <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon">
                                     <MoreVertical className="h-5 w-5" />
@@ -311,7 +312,7 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string): { url: string | null, textWithoutUrl: string } => {
-        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/)?([\w-]{11})(?:\S+)?/g;
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/|user\/.+\/|attribution_link\?a=.*&u=%2Fwatch%3Fv%3D)?([\w-]{11})(?:\S+)?/g;
         let url = null;
         let textWithoutUrl = text;
         
@@ -378,7 +379,6 @@ export default function FeedPage() {
         try {
             const batch = writeBatch(firestore);
             
-            // Get all comments and add delete operations to the batch
             const commentsSnapshot = await getDocs(commentsCollectionRef);
             if (!commentsSnapshot.empty) {
                 commentsSnapshot.forEach((commentDoc) => {
@@ -386,10 +386,7 @@ export default function FeedPage() {
                 });
             }
     
-            // Add the post delete operation to the batch
             batch.delete(postRef);
-
-            // Commit the batch
             await batch.commit();
     
             toast({
