@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ImageIcon, X, MoreVertical, Trash2 } from 'lucide-react';
+import { ImageIcon, X, MoreVertical, Trash2, Heart, MessageSquare } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { cn } from '@/lib/utils';
 
 
 interface Post {
@@ -42,6 +43,7 @@ interface Post {
   content: string;
   imageUrl?: string;
   createdAt: Timestamp;
+  likes?: string[];
 }
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -122,22 +124,23 @@ export default function FeedPage() {
     
         try {
             const postsCollection = collection(firestore, 'posts');
-            const newPostRef = doc(postsCollection); // Cria uma referência com ID único
+            const newPostRef = doc(postsCollection);
     
-            const postData: Omit<Post, 'createdAt'> & { createdAt: any } = {
+            const postData: Omit<Post, 'createdAt'> & { createdAt: any, likes: any[] } = {
                 id: newPostRef.id,
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
                 content: newPost,
                 createdAt: serverTimestamp(),
+                likes: [],
             };
     
             if (imageFile) {
                 postData.imageUrl = await toBase64(imageFile);
             }
     
-            await setDoc(newPostRef, postData); // Usa setDoc para salvar com o ID já definido
+            await setDoc(newPostRef, postData);
     
             setNewPost('');
             removeImage();
@@ -176,6 +179,44 @@ export default function FeedPage() {
             setShowDeleteAlert(false);
         }
     };
+
+    const handleLikeToggle = async (postId: string) => {
+        if (!user) {
+            toast({
+                variant: "destructive",
+                title: "Ação necessária",
+                description: "Você precisa estar logado para curtir uma publicação.",
+            });
+            return;
+        }
+    
+        const postRef = doc(firestore, 'posts', postId);
+        const post = posts.find(p => p.id === postId);
+    
+        if (!post) return;
+    
+        try {
+            if (post.likes?.includes(user.uid)) {
+                // Unlike
+                await updateDoc(postRef, {
+                    likes: arrayRemove(user.uid)
+                });
+            } else {
+                // Like
+                await updateDoc(postRef, {
+                    likes: arrayUnion(user.uid)
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao curtir o post: ", error);
+            toast({
+                variant: "destructive",
+                title: "Erro",
+                description: "Não foi possível atualizar a curtida.",
+            });
+        }
+    };
+    
 
     const openDeleteDialog = (postId: string) => {
         setPostToDelete(postId);
@@ -272,55 +313,70 @@ export default function FeedPage() {
             </Card>
 
             <div className="space-y-4">
-                {posts.map(post => (
-                    <Card key={post.id}>
-                        <CardHeader>
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Avatar>
-                                        <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
-                                        <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <CardTitle className="text-base">{post.authorName}</CardTitle>
-                                        <CardDescription>
-                                            {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
-                                        </CardDescription>
+                {posts.map(post => {
+                    const hasLiked = user ? post.likes?.includes(user.uid) : false;
+                    return (
+                        <Card key={post.id}>
+                            <CardHeader>
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar>
+                                            <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
+                                            <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <CardTitle className="text-base">{post.authorName}</CardTitle>
+                                            <CardDescription>
+                                                {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
+                                            </CardDescription>
+                                        </div>
                                     </div>
+                                    {user && user.uid === post.authorId && (
+                                         <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreVertical className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    <span>Excluir</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
-                                {user && user.uid === post.authorId && (
-                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreVertical className="h-5 w-5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => openDeleteDialog(post.id)} className="text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Excluir</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                            </CardHeader>
+                            <CardContent>
+                                {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
+                                {post.imageUrl && (
+                                    <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
+                                        <Image
+                                            src={post.imageUrl}
+                                            alt="Imagem da publicação"
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                        />
+                                    </div>
                                 )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {post.content && <p className="whitespace-pre-wrap mb-4">{post.content}</p>}
-                            {post.imageUrl && (
-                                <div className="relative mt-4 aspect-video rounded-lg overflow-hidden border">
-                                    <Image
-                                        src={post.imageUrl}
-                                        alt="Imagem da publicação"
-                                        fill
-                                        className="object-cover"
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                    />
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
+                            </CardContent>
+                             <CardFooter className="flex items-center gap-4 pt-4 border-t">
+                                <Button variant="ghost" size="sm" onClick={() => handleLikeToggle(post.id)}>
+                                    <Heart className={cn("mr-2 h-5 w-5", hasLiked && "text-red-500 fill-current")} />
+                                    <span>{post.likes?.length || 0}</span>
+                                    <span className="sr-only">Curtir</span>
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                    <MessageSquare className="mr-2 h-5 w-5" />
+                                    <span>0</span> 
+                                    <span className="sr-only">Comentar</span>
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )
+                })}
                  {posts.length === 0 && !loading && (
                     <div className="text-center text-muted-foreground py-10">
                         <p>Ainda não há publicações.</p>
@@ -362,3 +418,5 @@ export default function FeedPage() {
     </>
   );
 }
+
+    
