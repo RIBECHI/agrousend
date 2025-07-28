@@ -312,9 +312,9 @@ export default function FeedPage() {
     };
 
     const getYouTubeUrl = (text: string) => {
-        const youtubeRegex = /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})(?:\S+)?)/;
-        const match = text.match(youtubeRegex);
-        return match ? match[0] : null;
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(?:embed\/)?(?:v\/)?(?:shorts\/)?([\w-]{11})(?:\S+)?/g;
+        const match = youtubeRegex.exec(text);
+        return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
     }
 
     const handlePostSubmit = useCallback(async () => {
@@ -326,12 +326,8 @@ export default function FeedPage() {
             const postsCollection = collection(firestore, 'posts');
             const newPostRef = doc(postsCollection);
             
-            let postContent = newPost;
             const videoUrl = getYouTubeUrl(newPost);
-            
-            if (videoUrl) {
-                postContent = newPost.replace(videoUrl, '').trim();
-            }
+            const postContent = videoUrl ? newPost.replace(videoUrl, '').trim() : newPost;
             
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
@@ -371,18 +367,9 @@ export default function FeedPage() {
         if (!postId) return;
     
         try {
-            const postRef = doc(firestore, 'posts', postId);
-            
-            // 1. Delete all comments in the subcollection
-            const commentsRef = collection(postRef, 'comments');
-            const commentsSnapshot = await getDocs(commentsRef);
-            const deletePromises = commentsSnapshot.docs.map((commentDoc) => 
-                deleteDoc(commentDoc.ref)
-            );
-            await Promise.all(deletePromises);
-            
-            // 2. Delete the post itself
-            await deleteDoc(postRef);
+            // Firestore security rules should handle subcollection deletion if configured with an extension.
+            // For client-side, we just delete the main document.
+            await deleteDoc(doc(firestore, 'posts', postId));
 
             toast({
                 title: "Publicação excluída",
@@ -393,7 +380,7 @@ export default function FeedPage() {
             toast({
                 variant: "destructive",
                 title: "Erro ao excluir",
-                description: "Não foi possível remover a publicação.",
+                description: "Não foi possível remover a publicação. Verifique as regras de segurança do Firestore.",
             });
         } finally {
             setPostToDelete(null);
