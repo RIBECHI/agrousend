@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,13 +43,13 @@ interface CatalogItem {
 }
 
 const categoryConfig: { [key: string]: { icon: React.ElementType, color: string } } = {
-  fungicida: { icon: SprayCan, color: 'border-t-blue-500' },
-  inseticida: { icon: Bug, color: 'border-t-red-500' },
-  fertilizante: { icon: Beaker, color: 'border-t-green-500' },
-  herbicida: { icon: Leaf, color: 'border-t-yellow-500' },
-  sementes: { icon: Tractor, color: 'border-t-orange-500' },
-  peças: { icon: Cog, color: 'border-t-gray-500' },
-  default: { icon: Tractor, color: 'border-t-gray-400' },
+  fungicida: { icon: SprayCan, color: 'text-blue-500' },
+  inseticida: { icon: Bug, color: 'text-red-500' },
+  fertilizante: { icon: Beaker, color: 'text-green-500' },
+  herbicida: { icon: Leaf, color: 'text-yellow-500' },
+  sementes: { icon: Tractor, color: 'text-orange-500' },
+  peças: { icon: Cog, color: 'text-gray-500' },
+  default: { icon: Tractor, color: 'text-gray-400' },
 };
 
 
@@ -317,42 +318,47 @@ export default function ItemsPage() {
             </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => {
-            const config = categoryConfig[item.category] || categoryConfig.default;
-            const Icon = config.icon;
-            return (
-              <Card key={item.id} className={cn("flex flex-col border-t-4", config.color)}>
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{item.name}</CardTitle>
-                        <CardDescription>{item.category || 'Sem categoria'}</CardDescription>
-                      </div>
-                      <Icon className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                   {item.description && <p className="text-sm text-muted-foreground">{item.description}</p>}
-                </CardContent>
-                <CardFooter className="flex justify-end pt-4 space-x-2">
-                   <Button variant="outline" size="icon">
-                      <Eye className="h-5 w-5" />
-                      <span className="sr-only">Detalhes</span>
-                   </Button>
-                   <Button variant="outline" size="icon">
-                      <Pencil className="h-5 w-5" />
-                      <span className="sr-only">Editar</span>
-                   </Button>
-                   <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
-                      <Trash2 className="h-5 w-5" />
-                      <span className="sr-only">Excluir</span>
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })}
-        </div>
+        <Card>
+          <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => {
+                  const config = categoryConfig[item.category] || categoryConfig.default;
+                  const Icon = config.icon;
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <Icon className={cn("h-6 w-6", config.color)} />
+                      </TableCell>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.category}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="outline" size="icon">
+                            <Eye className="h-5 w-5" />
+                            <span className="sr-only">Detalhes</span>
+                        </Button>
+                        <Button variant="outline" size="icon">
+                            <Pencil className="h-5 w-5" />
+                            <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(item.id)}>
+                            <Trash2 className="h-5 w-5" />
+                            <span className="sr-only">Excluir</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+          </Table>
+        </Card>
       )}
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
             <AlertDialogContent>
