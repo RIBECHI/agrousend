@@ -32,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { cn } from '@/lib/utils';
+import { cn, capitalizeName } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
@@ -130,7 +130,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                             <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <CardTitle className="text-base">{post.authorName}</CardTitle>
+                            <CardTitle className="text-base">{capitalizeName(post.authorName)}</CardTitle>
                             <CardDescription>
                                 {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
                             </CardDescription>
@@ -247,7 +247,7 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                             </Avatar>
                             <div className="bg-muted p-3 rounded-lg w-full">
                                 <div className="flex items-center justify-between">
-                                    <p className="font-semibold text-sm">{comment.authorName}</p>
+                                    <p className="font-semibold text-sm">{capitalizeName(comment.authorName)}</p>
                                     <p className="text-xs text-muted-foreground">
                                          {comment.createdAt ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
                                     </p>
@@ -579,7 +579,7 @@ export default function FeedPage() {
                 <CardContent>
                     <div className="grid gap-4">
                         <Textarea
-                            placeholder={`No que você está pensando, ${user.displayName || 'Produtor'}? Cole um link do YouTube!`}
+                            placeholder={`No que você está pensando, ${capitalizeName(user.displayName || 'Produtor')}? Cole um link do YouTube!`}
                             value={newPost}
                             onChange={(e) => setNewPost(e.target.value)}
                             rows={4}
@@ -636,7 +636,7 @@ export default function FeedPage() {
         <aside className="space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Bem-vindo ao AgroUs, {user.displayName || 'Produtor'}!</CardTitle>
+                    <CardTitle>Bem-vindo ao AgroUs, {capitalizeName(user.displayName || 'Produtor')}!</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p>Fique por dentro das últimas notícias e conecte-se com outros produtores.</p>
@@ -665,6 +665,8 @@ export default function FeedPage() {
   );
 }
 
+
+    
 
     
 

@@ -14,7 +14,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loader, MessageSquare, PlusCircle, ArrowLeft, Send, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { cn, capitalizeName } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -263,7 +263,7 @@ export default function ForumPage() {
                                                     {topic.title}
                                                 </button>
                                                 <p className="text-sm text-muted-foreground">
-                                                    por {topic.authorName} em {topic.createdAt ? format(topic.createdAt.toDate(), 'dd/MM/yyyy') : '...'}
+                                                    por {capitalizeName(topic.authorName)} em {topic.createdAt ? format(topic.createdAt.toDate(), 'dd/MM/yyyy') : '...'}
                                                 </p>
                                             </div>
                                         </div>
@@ -303,7 +303,7 @@ export default function ForumPage() {
                                 <AvatarImage src={selectedTopic.authorPhotoURL || undefined} />
                                 <AvatarFallback>{selectedTopic.authorName?.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            Iniciado por {selectedTopic.authorName} - {selectedTopic.createdAt ? formatDistanceToNow(selectedTopic.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
+                            Iniciado por {capitalizeName(selectedTopic.authorName)} - {selectedTopic.createdAt ? formatDistanceToNow(selectedTopic.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
                         </CardDescription>
                     </div>
                     {user?.uid === selectedTopic.authorId && (
@@ -333,7 +333,7 @@ export default function ForumPage() {
                                     <AvatarImage src={reply.authorPhotoURL || undefined} />
                                     <AvatarFallback>{reply.authorName?.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <p className="font-semibold">{reply.authorName}</p>
+                                <p className="font-semibold">{capitalizeName(reply.authorName)}</p>
                             </div>
                             <p className="text-sm text-muted-foreground">
                                 {reply.createdAt ? formatDistanceToNow(reply.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
@@ -396,3 +396,4 @@ export default function ForumPage() {
   );
 }
 
+    
