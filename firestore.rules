@@ -12,23 +12,29 @@ service cloud.firestore {
 
     // Regras para a coleção 'farmPlots'
     match /farmPlots/{plotId} {
-      // Permite ler, atualizar e excluir se o usuário for o dono do documento.
+      // Permite ler (um doc), atualizar e excluir se o usuário for o dono do documento.
       allow get, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      // Permite listar documentos APENAS se a consulta filtrar pelo userId do usuário logado.
-      // E permite criar se o userId do novo documento for o mesmo do usuário logado.
+      
+      // Permite listar (query) e criar se o userId do novo documento ou da consulta for o mesmo do usuário logado.
       allow list, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // Regras para a coleção 'items' (Cadastro de Itens)
-    match /items/{itemId} {
-      // O usuário pode ler e escrever em um item se o 'userId' do documento for igual ao seu 'uid'.
-      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    // Regras para a coleção 'inventoryItems'
+    match /inventoryItems/{itemId} {
+       // Permite ler (um doc), atualizar e excluir se o usuário for o dono do documento.
+      allow get, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Permite listar (query) e criar se o userId do novo documento ou da consulta for o mesmo do usuário logado.
+      allow list, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
 
-    // Regras para a coleção 'inventoryItems' (Controle de Estoque)
-    match /inventoryItems/{itemId} {
-      // O usuário pode ler e escrever em um item do estoque se o 'userId' do documento for igual ao seu 'uid'.
-      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+     // Regras para a coleção 'items' (Catálogo)
+    match /items/{itemId} {
+       // Permite ler (um doc), atualizar e excluir se o usuário for o dono do documento.
+      allow get, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      
+      // Permite listar (query) e criar se o userId do novo documento ou da consulta for o mesmo do usuário logado.
+      allow list, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
