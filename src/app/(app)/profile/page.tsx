@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { auth, firestore, storage } from '@/lib/firebase';
 import { deleteUser, updateProfile } from 'firebase/auth';
-import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -92,13 +92,13 @@ export default function ProfilePage() {
         photoURL,
       });
 
-      // Update Firestore document
+      // Update/Create Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userDocRef, {
+      await setDoc(userDocRef, {
         displayName,
         role,
         photoURL,
-      });
+      }, { merge: true });
 
       toast({ title: 'Perfil atualizado com sucesso!' });
       setIsSheetOpen(false);
@@ -320,5 +320,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
