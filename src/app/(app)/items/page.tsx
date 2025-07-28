@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -58,10 +58,10 @@ export default function ItemsPage() {
 
     const itemsCollection = collection(firestore, 'items');
     // A consulta composta com where() e orderBy() requer um índice manual no Firestore.
-    // Removendo o orderBy() para simplificar o desenvolvimento inicial.
     const q = query(
       itemsCollection,
-      where('userId', '==', user.uid)
+      where('userId', '==', user.uid),
+      orderBy('name')
     );
     
     setIsLoading(true);
@@ -70,11 +70,11 @@ export default function ItemsPage() {
       setItems(fetchedItems);
       setIsLoading(false);
     }, (error) => {
-      console.error("Erro ao buscar itens: ", error);
+      console.error("Erro ao buscar itens (verifique o índice do Firestore): ", error);
       toast({
         variant: "destructive",
         title: "Erro ao carregar itens",
-        description: "Não foi possível buscar os itens cadastrados. Verifique o console para mais detalhes.",
+        description: "Não foi possível buscar os itens. Verifique o console para um link de criação de índice.",
       });
       setIsLoading(false);
     });
