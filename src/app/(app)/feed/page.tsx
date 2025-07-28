@@ -312,8 +312,8 @@ export default function FeedPage() {
         }
     };
 
-    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
     const getYouTubeUrl = (text: string) => {
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
         const match = text.match(youtubeRegex);
         return match ? `https://www.youtube.com/watch?v=${match[1]}` : null;
     }
@@ -328,18 +328,12 @@ export default function FeedPage() {
             const newPostRef = doc(postsCollection);
             
             const videoUrl = getYouTubeUrl(newPost);
-            let postContent = newPost;
-
-            if (videoUrl) {
-                // Remove the youtube url from the content
-                postContent = newPost.replace(youtubeRegex, '').trim();
-            }
-    
+            
             const postData: Omit<Post, 'createdAt' | 'id'> & { createdAt: any, likes: any[] } = {
                 authorId: user.uid,
                 authorName: user.displayName || 'Anônimo',
                 authorPhotoURL: user.photoURL,
-                content: postContent,
+                content: newPost,
                 createdAt: serverTimestamp(),
                 likes: [],
             };
