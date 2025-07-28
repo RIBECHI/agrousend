@@ -308,23 +308,93 @@ export default function FeedPage() {
         }
     }, [imagePreview]);
 
+    const compressImage = async (file: File, quality = 0.7, maxSizeMB = 1): Promise<File> => {
+        const maxSize = maxSizeMB * 1024 * 1024;
+        if (file.size <= maxSize) {
+            return file;
+        }
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        return new Promise((resolve, reject) => {
+            const image = new window.Image();
+            image.src = URL.createObjectURL(file);
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                if (!ctx) {
+                    return reject(new Error('Não foi possível obter o contexto do canvas.'));
+                }
+
+                let { width, height } = image;
+
+                // Opcional: Redimensionar a imagem se for muito grande
+                const MAX_WIDTH_HEIGHT = 1920;
+                if (width > height) {
+                    if (width > MAX_WIDTH_HEIGHT) {
+                        height *= MAX_WIDTH_HEIGHT / width;
+                        width = MAX_WIDTH_HEIGHT;
+                    }
+                } else {
+                    if (height > MAX_WIDTH_HEIGHT) {
+                        width *= MAX_WIDTH_HEIGHT / height;
+                        height = MAX_WIDTH_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(image, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            if (blob.size > maxSize) {
+                                // Se ainda for muito grande, tenta comprimir mais (recursivamente)
+                                // Isso é uma simplificação, idealmente você não usaria recursão aqui para evitar loops
+                                toast({
+                                    variant: "destructive",
+                                    title: "Compressão falhou",
+                                    description: "A imagem é muito grande mesmo após a compressão inicial.",
+                                });
+                                return reject(new Error("Imagem muito grande."));
+                            }
+                            const newFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            resolve(newFile);
+                        } else {
+                            reject(new Error('Falha ao criar o blob da imagem.'));
+                        }
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            };
+            image.onerror = reject;
+        });
+    };
+
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            if (file.size > 1 * 1024 * 1024) { // 1MB limit
+            try {
+                const compressedFile = await compressImage(file);
+                setImageFile(compressedFile);
+                const previewUrl = URL.createObjectURL(compressedFile);
+                setImagePreview(previewUrl);
+            } catch (error: any) {
                 toast({
                     variant: "destructive",
-                    title: "Imagem muito grande",
-                    description: "Por favor, selecione uma imagem com menos de 1MB.",
+                    title: "Erro ao processar imagem",
+                    description: error.message || "Não foi possível comprimir a imagem.",
                 });
-                return;
+                removeImage();
             }
-            setImageFile(file);
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
         }
     };
+
 
     const getYouTubeVideoId = (url: string): string | null => {
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|shorts\/|user\/.+\/|attribution_link\?a=.*&u=%2Fwatch%3Fv%3D|e\/)?([\w-]{11})(?:\S+)?/;
