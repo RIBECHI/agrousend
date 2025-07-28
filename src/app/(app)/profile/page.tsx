@@ -1,17 +1,23 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { auth, firestore } from '@/lib/firebase';
-import { deleteUser } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { auth, firestore, storage } from '@/lib/firebase';
+import { deleteUser, updateProfile } from 'firebase/auth';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, AlertTriangle, User, ShieldAlert } from 'lucide-react';
+import { Loader, AlertTriangle, User, ShieldAlert, Pencil, Camera } from 'lucide-react';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import Image from 'next/image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,35 +28,108 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Separator } from '@/components/ui/separator';
+import type { UserRole } from '@/contexts/auth-context';
+
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+
+  // State for forms
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Profile editing state
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [role, setRole] = useState<UserRole | undefined>(user?.role);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(user?.photoURL || null);
+
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.displayName || '');
+      setRole(user.role);
+      setImagePreview(user.photoURL || null);
+    }
+  }, [user]);
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      const preview = await toBase64(file);
+      setImagePreview(preview);
+    }
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      let photoURL = user.photoURL;
+
+      if (imageFile) {
+        const storageRef = ref(storage, `avatars/${user.uid}`);
+        const base64String = await toBase64(imageFile);
+        await uploadString(storageRef, base64String, 'data_url');
+        photoURL = await getDownloadURL(storageRef);
+      }
+
+      // Update Firebase Auth profile
+      await updateProfile(auth.currentUser!, {
+        displayName,
+        photoURL,
+      });
+
+      // Update Firestore document
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        displayName,
+        role,
+        photoURL,
+      });
+
+      toast({ title: 'Perfil atualizado com sucesso!' });
+      setIsSheetOpen(false);
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar',
+        description: 'Não foi possível salvar as alterações.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
 
   const handleDeleteAccount = async () => {
     if (!user) return;
 
     setIsDeleting(true);
     try {
-      // 1. Delete user document from Firestore
       const userDocRef = doc(firestore, 'users', user.uid);
       await deleteDoc(userDocRef);
-
-      // 2. Delete user from Firebase Authentication
-      // This is a security-sensitive operation and might require recent login.
-      // If it fails, we guide the user to re-authenticate.
-      await deleteUser(user);
+      await deleteUser(auth.currentUser!);
 
       toast({
         title: 'Conta excluída',
         description: 'Sua conta foi excluída com sucesso. Sentiremos sua falta!',
       });
       
-      router.push('/'); // Redirect to login page
+      router.push('/');
 
     } catch (error: any) {
       console.error("Erro ao excluir conta: ", error);
@@ -77,7 +156,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This case should be handled by the layout, but as a fallback:
     router.push('/');
     return null;
   }
@@ -92,22 +170,101 @@ export default function ProfilePage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-20 w-20">
+            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+              <Avatar className="h-24 w-24">
                 <AvatarImage src={user.photoURL || undefined} alt="User Avatar" />
-                <AvatarFallback className="text-3xl">
+                <AvatarFallback className="text-4xl">
                     {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="space-y-1">
-                <CardTitle className="text-2xl">{user.displayName || 'Usuário'}</CardTitle>
+              <div className="text-center sm:text-left">
+                <CardTitle className="text-3xl">{user.displayName || 'Usuário'}</CardTitle>
                 <CardDescription>{user.email}</CardDescription>
+                <CardDescription className="capitalize mt-1 font-medium text-primary">
+                    {user.role === 'service_provider' ? 'Prestador de Serviço' : user.role}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {/* Placeholder for future profile editing functionality */}
-            <Button variant="outline" disabled>Editar Perfil (Em breve)</Button>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar Perfil
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:max-w-lg">
+                <form onSubmit={handleProfileUpdate} className="flex flex-col h-full">
+                  <SheetHeader>
+                    <SheetTitle>Editar Perfil</SheetTitle>
+                    <SheetDescription>
+                      Atualize suas informações. As alterações serão visíveis para outros usuários.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="space-y-6 py-6 flex-1 pr-6 overflow-y-auto">
+                    
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
+                            <Avatar className="h-32 w-32">
+                                <AvatarImage src={imagePreview || undefined} />
+                                <AvatarFallback className="text-5xl">{displayName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <label htmlFor="photo-upload" className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90">
+                                <Camera className="h-5 w-5" />
+                                <input id="photo-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="displayName">Nome Completo</Label>
+                      <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+                    </div>
+                     <div>
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" value={user.email || ''} disabled />
+                       <p className="text-xs text-muted-foreground mt-1">O e-mail não pode ser alterado.</p>
+                    </div>
+                    <div>
+                      <Label>Tipo de Conta</Label>
+                       <RadioGroup
+                            value={role}
+                            onValueChange={(value: UserRole) => setRole(value)}
+                            className="grid grid-cols-3 gap-2 mt-2"
+                        >
+                            <div>
+                                <RadioGroupItem value="producer" id="producer" className="peer sr-only" />
+                                <Label htmlFor="producer" className="text-center block rounded-md border-2 border-muted bg-popover p-3 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    Produtor
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="supplier" id="supplier" className="peer sr-only" />
+                                <Label htmlFor="supplier" className="text-center block rounded-md border-2 border-muted bg-popover p-3 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    Fornecedor
+                                </Label>
+                            </div>
+                            <div>
+                                <RadioGroupItem value="service_provider" id="service_provider" className="peer sr-only" />
+                                <Label htmlFor="service_provider" className="text-center block rounded-md border-2 border-muted bg-popover p-3 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                                    Serviços
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                  </div>
+                  <SheetFooter className="pt-4 mt-auto">
+                    <SheetClose asChild>
+                      <Button type="button" variant="outline">Cancelar</Button>
+                    </SheetClose>
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : 'Salvar Alterações'}
+                    </Button>
+                  </SheetFooter>
+                </form>
+              </SheetContent>
+            </Sheet>
           </CardContent>
         </Card>
 
@@ -164,3 +321,4 @@ export default function ProfilePage() {
   );
 }
 
+    

@@ -6,13 +6,16 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, firestore } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
+// Define a união de tipos para o papel do usuário
+export type UserRole = 'producer' | 'supplier' | 'service_provider';
+
 // Combina o usuário do Auth com os dados do Firestore
 export interface UserProfile {
   uid: string;
   displayName: string | null;
   email: string | null;
   photoURL: string | null;
-  role?: 'producer' | 'supplier' | 'service_provider';
+  role?: UserRole;
 }
 
 interface AuthContextType {
@@ -84,3 +87,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
