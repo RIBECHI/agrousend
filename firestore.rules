@@ -1,33 +1,60 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regras para Posts
-    match /posts/{postId} {
+
+    // Regra geral de leitura: qualquer usuário logado pode ler documentos.
+    // As permissões de escrita são definidas explicitamente por coleção abaixo.
+    match /{document=**} {
       allow read: if request.auth != null;
+    }
+
+    // Regras para a coleção 'users'
+    match /users/{userId} {
+      allow create, update, delete: if request.auth.uid == userId;
+    }
+
+    // Regras para a coleção 'posts' e sua subcoleção 'comments'
+    match /posts/{postId} {
       allow create: if request.auth.uid == request.resource.data.authorId;
       allow delete: if request.auth.uid == resource.data.authorId;
-      allow update: if request.auth.uid == resource.data.authorId;
+      allow update: if request.auth.uid != null; // Permite a ação de "curtir"
+
+      match /comments/{commentId} {
+        allow create: if request.auth.uid != null;
+        allow delete: if request.auth.uid == resource.data.authorId;
+      }
     }
 
-    // Regras para gestão de talhões do usuário
+    // Regras para a coleção 'forumTopics' e sua subcoleção 'replies'
+    match /forumTopics/{topicId} {
+      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow update: if request.auth != null; // Para atualizar contagem de respostas, etc.
+      allow delete: if request.auth.uid == resource.data.authorId;
+
+      match /replies/{replyId} {
+        allow create: if request.auth.uid == request.resource.data.authorId;
+        allow delete: if request.auth.uid == resource.data.authorId;
+      }
+    }
+
+    // Regras para o Chat
+    match /chats/{chatId} {
+      allow read, write: if request.auth.uid in chatId.split('_');
+      match /messages/{messageId} {
+        allow read, write: if request.auth.uid in chatId.split('_');
+      }
+    }
+
+    // Regras para coleções de gerenciamento do usuário
     match /farmPlots/{plotId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth.uid == resource.data.userId;
+       allow read, write: if request.auth.uid == resource.data.userId;
     }
-
-    // Regras para itens de estoque do usuário
     match /inventoryItems/{itemId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth.uid == resource.data.userId;
+       allow read, write: if request.auth.uid == resource.data.userId;
     }
-
-    // Regras para o catálogo de itens do usuário
     match /items/{itemId} {
-      allow read: if request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update, delete: if request.auth.uid == resource.data.userId;
+       allow read, write: if request.auth.uid == resource.data.userId;
     }
   }
 }
