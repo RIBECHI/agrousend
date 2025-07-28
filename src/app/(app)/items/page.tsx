@@ -60,8 +60,8 @@ export default function ItemsPage() {
     // A consulta composta com where() e orderBy() requer um índice manual no Firestore.
     const q = query(
       itemsCollection,
-      where('userId', '==', user.uid),
-      orderBy('name')
+      where('userId', '==', user.uid)
+      // Temporariamente removido: orderBy('name')
     );
     
     setIsLoading(true);
