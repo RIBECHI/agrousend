@@ -57,8 +57,8 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
                 labelsPane.style.pointerEvents = 'none'; // Clicks go through to the map
             }
 
-            const labelsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 pane: 'labels'
             }).addTo(map);
             
