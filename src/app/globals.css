@@ -92,3 +92,24 @@ body {
     font-family: var(--font-family);
   }
 }
+
+/* Custom Leaflet Draw vertex markers */
+.leaflet-editing-icon {
+    background-color: white !important;
+    border: 2px solid hsl(var(--primary)) !important;
+    border-radius: 50% !important;
+    width: 10px !important;
+    height: 10px !important;
+    margin-left: -5px !important;
+    margin-top: -5px !important;
+}
+
+.leaflet-draw-handle-movable {
+    background-color: white !important;
+    border: 2px solid hsl(var(--primary)) !important;
+    border-radius: 50% !important;
+    width: 10px !important;
+    height: 10px !important;
+    margin-left: -5px !important;
+    margin-top: -5px !important;
+}
