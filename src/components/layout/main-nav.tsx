@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   Tag,
   Store,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ const topLevelNavItems = [
 ];
 
 const managementNavItems = [
-    { href: '/farms', label: 'Gestão de Talhões', icon: Tractor },
+    { href: '/my-farm', label: 'Minha Fazenda', icon: Map },
     { href: '/items', label: 'Cadastro de Itens', icon: Tag },
     { href: '/inventory', label: 'Controle de Estoque', icon: Warehouse },
 ]
@@ -51,7 +52,7 @@ const bottomLevelNavItems = [
 export function MainNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const isManagementRouteActive = managementNavItems.some(item => pathname === item.href);
+  const isManagementRouteActive = managementNavItems.some(item => pathname.startsWith(item.href));
   const [isManagementOpen, setIsManagementOpen] = useState(isManagementRouteActive);
 
   const isProducer = user?.role === 'producer';
@@ -88,7 +89,7 @@ export function MainNav() {
                         <Button
                             key={item.href}
                             asChild
-                            variant={pathname === item.href ? 'secondary' : 'ghost'}
+                            variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
                             className="w-full justify-start rounded-md"
                             >
                             <Link href={item.href}>
