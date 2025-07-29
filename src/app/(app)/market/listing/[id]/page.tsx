@@ -62,13 +62,12 @@ export default function ListingDetailPage() {
     }
   }, [id, router, toast]);
   
-  const handleCopyLink = async (listingId: string) => {
+  const handleCopyLink = () => {
     try {
-        const link = `${window.location.origin}/market/listing/${listingId}`;
-        await navigator.clipboard.writeText(link);
+        const link = window.location.href;
+        navigator.clipboard.writeText(link);
         toast({ title: 'Link do anúncio copiado!' });
     } catch (err) {
-        console.error('Falha ao copiar o link:', err);
         toast({
             variant: 'destructive',
             title: 'Erro',
@@ -154,6 +153,7 @@ export default function ListingDetailPage() {
                                         alt={listing.title}
                                         fill
                                         className="object-cover"
+                                        data-ai-hint="default product"
                                     />
                                 </div>
                             </CarouselItem>
@@ -204,7 +204,7 @@ export default function ListingDetailPage() {
                     </div>
                     
                      <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                        <Button size="lg" onClick={() => handleCopyLink(listing.id)}>
+                        <Button size="lg" onClick={handleCopyLink}>
                             <Copy className="mr-2" />
                             Copiar Link
                         </Button>

@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, MoreVertical, Pencil, Trash2, CheckCircle, PackageOpen } from 'lucide-react';
 import Image from 'next/image';
@@ -217,7 +217,7 @@ export default function SellingPage() {
                                     <span>Marcar como {listing.status === 'sold' ? 'Ativo' : 'Vendido'}</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => openDeleteDialog(listing.id)} className="text-destructive">
+                                <DropdownMenuItem onClick={() => openDeleteDialog(listing.id)} className="text-destructive cursor-pointer">
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     <span>Excluir</span>
                                 </DropdownMenuItem>
@@ -230,7 +230,6 @@ export default function SellingPage() {
         )}
       </div>
 
-      {/* Reutiliza o mesmo Sheet de criação, mas agora com capacidade de edição */}
       <CreateListingSheet 
         isSheetOpen={isSheetOpen}
         setIsSheetOpen={setIsSheetOpen}
@@ -238,7 +237,6 @@ export default function SellingPage() {
         onListingUpdated={handleListingUpdated}
       />
 
-      {/* Alert Dialog para confirmação de exclusão */}
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>

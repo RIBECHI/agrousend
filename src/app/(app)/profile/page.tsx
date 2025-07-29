@@ -17,7 +17,6 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescri
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import Image from 'next/image';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { UserRole } from '@/contexts/auth-context';
 import { getToken } from 'firebase/messaging';
+import { capitalizeName } from '@/lib/utils';
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -136,7 +136,6 @@ export default function ProfilePage() {
         const permission = await Notification.requestPermission();
 
         if (permission === 'granted') {
-            // IMPORTANT: Replace with your actual VAPID key from Firebase Console > Project Settings > Cloud Messaging
             const currentToken = await getToken(messaging, { vapidKey: 'BPEkM5nKZAey3pyA5bS3bLpWEXGk5bcs_3-h_w3G_E0Y3S1f1W_pZ_xX_o_xX_o_xX_o_xX_o_xX_o_xX_o_xX' });
             if (currentToken) {
                 const userDocRef = doc(firestore, 'users', user.uid);
@@ -236,7 +235,7 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div className="text-center sm:text-left">
-                <CardTitle className="text-3xl">{user.displayName || 'Usuário'}</CardTitle>
+                <CardTitle className="text-3xl">{capitalizeName(user.displayName)}</CardTitle>
                 <CardDescription>{user.email}</CardDescription>
                 <CardDescription className="capitalize mt-1 font-medium text-primary">
                     {user.role === 'service_provider' ? 'Prestador de Serviço' : user.role}

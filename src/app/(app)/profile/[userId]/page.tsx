@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader, User, ArrowLeft, MessageSquare } from 'lucide-react';
 import type { UserProfile, UserRole } from '@/contexts/auth-context';
+import { capitalizeName } from '@/lib/utils';
 
 const getRoleDisplayName = (role?: UserRole) => {
     switch (role) {
@@ -95,7 +96,7 @@ export default function PublicProfilePage() {
               </AvatarFallback>
             </Avatar>
             <div className="text-center sm:text-left">
-              <CardTitle className="text-3xl">{profile.displayName || 'Usuário'}</CardTitle>
+              <CardTitle className="text-3xl">{capitalizeName(profile.displayName)}</CardTitle>
               <CardDescription>{profile.email}</CardDescription>
               <CardDescription className="capitalize mt-1 font-medium text-primary">
                 {getRoleDisplayName(profile.role)}

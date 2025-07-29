@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, User, Users, Search } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, capitalizeName } from '@/lib/utils';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -137,7 +137,7 @@ export default function ChatPage() {
                     <AvatarFallback>{u.displayName.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                    <p className="font-semibold">{u.displayName}</p>
+                    <p className="font-semibold">{capitalizeName(u.displayName)}</p>
                     <p className="text-sm text-muted-foreground">{u.email}</p>
                     </div>
                 </div>
@@ -160,7 +160,7 @@ export default function ChatPage() {
                       <AvatarFallback>{selectedUser.displayName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h2 className="text-xl font-bold group-hover:underline">{selectedUser.displayName}</h2>
+                    <h2 className="text-xl font-bold group-hover:underline">{capitalizeName(selectedUser.displayName)}</h2>
                     <p className="text-sm text-muted-foreground">Clique para ver o perfil</p>
                   </div>
                 </div>

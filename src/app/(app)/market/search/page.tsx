@@ -1,20 +1,18 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '@/contexts/auth-context';
+import { useState, useEffect, useMemo } from 'react';
 import { firestore } from '@/lib/firebase';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare, User, Copy, Share2 } from 'lucide-react';
+import { Loader, Search as SearchIcon, MapPin, Tag, User, Copy } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
 import { brazilianStates } from '@/lib/brazilian-locations';
 
@@ -78,9 +76,6 @@ export default function MarketSearchPage() {
   const [cities, setCities] = useState<string[]>([]);
   const [filterDistance, setFilterDistance] = useState('Qualquer');
 
-  // Details Modal state
-  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
-
   useEffect(() => {
     if (filterState && filterState !== 'all') {
         const selectedStateData = brazilianStates.find(s => s.sigla === filterState);
@@ -112,31 +107,16 @@ export default function MarketSearchPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleCopyLink = async (listingId: string) => {
-    try {
-        const link = `${window.location.origin}/market/listing/${listingId}`;
-        await navigator.clipboard.writeText(link);
-        toast({ title: 'Link do anúncio copiado!' });
-    } catch (err) {
-        toast({
-            variant: 'destructive',
-            title: 'Erro',
-            description: 'Não foi possível copiar o link.',
-        });
-    }
-  };
-
-
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
         const matchesSearch = listing.title.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'Todos' || listing.category === filterCategory;
         const locationString = listing.location.toLowerCase();
         
-        const stateInfo = brazilianStates.find(s => s.sigla === filterState);
+        const stateInfo = brazilianStates.find(s => s.sigla.toLowerCase() === filterState.toLowerCase());
         const stateName = stateInfo ? stateInfo.nome.toLowerCase() : '';
 
-        const matchesLocation = (filterState === 'all' && filterCity === 'all') || 
+        const matchesLocation = (filterState === 'all') || 
                                 (filterState !== 'all' && filterCity === 'all' && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase()))) ||
                                 (filterState !== 'all' && filterCity !== 'all' && locationString.includes(filterCity.toLowerCase()) && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase())));
         
@@ -144,13 +124,6 @@ export default function MarketSearchPage() {
     })
   }, [listings, searchTerm, filterCategory, filterState, filterCity]);
 
-  const formattedPrice = (price: number | undefined) => {
-    if (!price) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(price);
-  }
 
   const SearchResults = () => {
     if (isLoading) {
@@ -244,70 +217,6 @@ export default function MarketSearchPage() {
 
        <SearchResults />
     </div>
-
-    {selectedListing && (
-    <Dialog open={!!selectedListing} onOpenChange={(open) => !open && setSelectedListing(null)}>
-        <DialogContent className="sm:max-w-3xl">
-            <DialogHeader>
-                <DialogTitle className="text-2xl">{selectedListing.title}</DialogTitle>
-            </DialogHeader>
-            <div className="grid md:grid-cols-2 gap-6 py-4">
-                <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
-                    <Image 
-                        src={(selectedListing.imageUrls && selectedListing.imageUrls[0]) || 'https://placehold.co/600x600.png'}
-                        alt={selectedListing.title}
-                        fill
-                        className="object-cover"
-                    />
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <p className="text-3xl font-bold text-primary">{formattedPrice(selectedListing.price)}</p>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                        <h3 className="font-semibold">Detalhes</h3>
-                        <div className="text-sm text-muted-foreground grid grid-cols-2 gap-2">
-                            <div className="flex items-center gap-2">
-                                <Tag className="h-4 w-4" />
-                                <span>{selectedListing.category}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4" />
-                                <span>{selectedListing.location}</span>
-                            </div>
-                            <div className="flex items-center gap-2 col-span-2">
-                                <User className="h-4 w-4" />
-                                <span>Vendido por: {selectedListing.authorName}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                        <h3 className="font-semibold">Descrição</h3>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {selectedListing.description || "Nenhuma descrição fornecida."}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <DialogFooter className="sm:justify-start gap-2">
-                 <Button variant="outline" onClick={() => handleCopyLink(selectedListing.id)}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Copiar Link
-                </Button>
-                <Button onClick={() => {
-                    setSelectedListing(null);
-                    router.push('/chat');
-                    toast({ title: "Inicie uma conversa com o vendedor!"});
-                }}>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Entrar em contato
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-    )}
     </>
   );
 }
