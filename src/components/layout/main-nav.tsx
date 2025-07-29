@@ -29,7 +29,6 @@ import { useAuth } from '@/contexts/auth-context';
 
 const topLevelNavItems = [
   { href: '/feed', label: 'Feed', icon: Home },
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/market', label: 'Marketplace', icon: Store },
   { href: '/chat', label: 'Chat', icon: MessageSquare },
   { href: '/forum', label: 'Fórum', icon: MessagesSquare },
