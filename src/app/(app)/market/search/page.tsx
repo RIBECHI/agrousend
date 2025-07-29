@@ -9,13 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag } from 'lucide-react';
+import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
+import { brazilianStates } from '@/lib/brazilian-locations';
 
 interface Listing {
   id: string;
@@ -72,11 +73,23 @@ export default function MarketSearchPage() {
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('Todos');
-  const [filterLocation, setFilterLocation] = useState('');
+  const [filterState, setFilterState] = useState('');
+  const [filterCity, setFilterCity] = useState('');
+  const [cities, setCities] = useState<string[]>([]);
   const [filterDistance, setFilterDistance] = useState('Qualquer');
 
   // Details Modal state
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
+  useEffect(() => {
+    if (filterState) {
+        const selectedStateData = brazilianStates.find(s => s.sigla === filterState);
+        setCities(selectedStateData ? selectedStateData.cidades : []);
+        setFilterCity(''); // Reseta a cidade quando o estado muda
+    } else {
+        setCities([]);
+    }
+  }, [filterState]);
 
   useEffect(() => {
     const listingsCollection = collection(firestore, 'listings');
@@ -101,15 +114,21 @@ export default function MarketSearchPage() {
 
 
   const filteredListings = useMemo(() => {
-    // A lógica de distância e localização aqui é apenas textual por enquanto.
-    // A implementação de geolocalização real seria um próximo passo.
     return listings.filter(listing => {
         const matchesSearch = listing.title.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory = filterCategory === 'Todos' || listing.category === filterCategory;
-        const matchesLocation = !filterLocation || listing.location.toLowerCase().includes(filterLocation.toLowerCase());
+        const locationString = listing.location.toLowerCase();
+        
+        const stateInfo = brazilianStates.find(s => s.sigla === filterState);
+        const stateName = stateInfo ? stateInfo.nome.toLowerCase() : '';
+
+        const matchesLocation = (!filterState && !filterCity) || 
+                                (filterState && !filterCity && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase()))) ||
+                                (filterState && filterCity && locationString.includes(filterCity.toLowerCase()) && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase())));
+        
         return matchesSearch && matchesCategory && matchesLocation;
     })
-  }, [listings, searchTerm, filterCategory, filterLocation]);
+  }, [listings, searchTerm, filterCategory, filterState, filterCity]);
 
   const formattedPrice = (price: number | undefined) => {
     if (!price) return 'R$ 0,00';
@@ -170,7 +189,7 @@ export default function MarketSearchPage() {
             />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Select value={filterCategory} onValueChange={setFilterCategory}>
                 <SelectTrigger>
                     <SelectValue placeholder="Categoria" />
@@ -179,11 +198,24 @@ export default function MarketSearchPage() {
                     {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
             </Select>
-            <Input 
-                placeholder="Sua cidade, estado..."
-                value={filterLocation}
-                onChange={(e) => setFilterLocation(e.target.value)}
-            />
+            <Select value={filterState} onValueChange={setFilterState}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">Todos os Estados</SelectItem>
+                    {brazilianStates.map(state => <SelectItem key={state.sigla} value={state.sigla}>{state.nome}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            <Select value={filterCity} onValueChange={setFilterCity} disabled={!filterState}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Cidade" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">Todas as Cidades</SelectItem>
+                    {cities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
+                </SelectContent>
+            </Select>
              <Select value={filterDistance} onValueChange={setFilterDistance}>
                 <SelectTrigger>
                     <SelectValue placeholder="Raio" />
@@ -248,6 +280,7 @@ export default function MarketSearchPage() {
                     router.push('/chat');
                     toast({ title: "Inicie uma conversa com o vendedor!"});
                 }}>
+                    <MessageSquare className="mr-2 h-4 w-4" />
                     Entrar em contato
                 </Button>
             </DialogFooter>
@@ -257,3 +290,5 @@ export default function MarketSearchPage() {
     </>
   );
 }
+
+    
