@@ -1,120 +1,163 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
-import L, { LatLngTuple } from 'leaflet';
-import 'leaflet-draw';
-
-// Workaround for Leaflet's default icon issues with bundlers
-import 'leaflet/dist/images/marker-shadow.png';
-import 'leaflet/dist/images/marker-icon-2x.png';
+import 'maplibre-gl';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import Map, { MapRef, NavigationControl, useControl, Source, Layer } from 'react-map-gl';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
+import { LngLatLike } from 'maplibre-gl';
+import * as turf from '@turf/turf';
 
 interface MapWithDrawProps {
-  onDrawComplete: (areaInHectares: number, geoJson: any) => void;
+  onDrawComplete?: (areaInHectares: number, geoJson: any) => void;
+  readOnly?: boolean;
+  plots?: any[];
 }
 
-const MapWithDraw = ({ onDrawComplete }: MapWithDrawProps) => {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
-  const drawnItems = useRef<L.FeatureGroup>(new L.FeatureGroup());
+const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/satellite/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`;
+
+// Custom hook to wrap the MapboxDraw control
+function DrawControl(props: any) {
+  useControl(() => new MapboxDraw(props), {
+    position: props.position,
+  });
+  return null;
+}
+
+const MapWithDraw = ({ onDrawComplete, readOnly = false, plots = [] }: MapWithDrawProps) => {
+  const mapRef = useRef<MapRef>(null);
+  const [initialViewState, setInitialViewState] = useState({
+    longitude: -54,
+    latitude: -15,
+    zoom: 3.5,
+  });
+
+
+  const onDrawCreate = useCallback((e: any) => {
+    const feature = e.features[0];
+    if (feature && onDrawComplete) {
+      const area = turf.area(feature); // in square meters
+      const areaInHectares = area / 10000;
+      onDrawComplete(areaInHectares, feature.geometry);
+    }
+  }, [onDrawComplete]);
+
+  const onDrawUpdate = useCallback((e: any) => {
+     if (e.features.length > 0 && onDrawComplete) {
+        const feature = e.features[0];
+        const area = turf.area(feature);
+        const areaInHectares = area / 10000;
+        onDrawComplete(areaInHectares, feature.geometry);
+    }
+  }, [onDrawComplete]);
+
+  const onDrawDelete = useCallback(() => {
+    if(onDrawComplete) {
+        onDrawComplete(0, null);
+    }
+  }, [onDrawComplete]);
+
 
   useEffect(() => {
-    // Prevent map from re-initializing
-    if (!mapRef.current || mapInstance.current) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
 
-    // Set default icon paths
-     try {
-        // @ts-ignore
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png').default,
-            iconUrl: require('leaflet/dist/images/marker-icon.png').default,
-            shadowUrl: require('leaflet/dist/images/marker-shadow.png').default,
-        });
-    } catch (e) {
-        console.error("Erro ao configurar ícones do Leaflet:", e);
-    }
+    map.on('draw.create', onDrawCreate);
+    map.on('draw.update', onDrawUpdate);
+    map.on('draw.delete', onDrawDelete);
+
+    return () => {
+        map.off('draw.create', onDrawCreate);
+        map.off('draw.update', onDrawUpdate);
+        map.off('draw.delete', onDrawDelete);
+    };
+  }, [onDrawCreate, onDrawUpdate, onDrawDelete]);
 
 
-    const initialCenter: LatLngTuple = [-15.7942, -47.8825]; // Brazil
-    const map = L.map(mapRef.current).setView(initialCenter, 4);
-    mapInstance.current = map;
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-    }).addTo(map);
-
-    map.addLayer(drawnItems.current);
-
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polygon: {
-          allowIntersection: false,
-          shapeOptions: {
-            color: '#69B166'
-          }
-        },
-        polyline: false,
-        rectangle: false,
-        circle: false,
-        marker: false,
-        circlemarker: false,
-      },
-      edit: {
-        featureGroup: drawnItems.current,
-        remove: true
-      }
-    });
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, (event: any) => {
-      const layer = event.layer;
-      drawnItems.current.clearLayers(); // Limpa desenhos anteriores
-      drawnItems.current.addLayer(layer);
-
-      const geoJson = layer.toGeoJSON();
-      const areaInMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
-      const areaInHectares = areaInMeters / 10000;
-
-      onDrawComplete(areaInHectares, geoJson.geometry);
-    });
-
-     map.on(L.Draw.Event.EDITED, (event: any) => {
-      event.layers.eachLayer((layer: any) => {
-        const geoJson = layer.toGeoJSON();
-        const areaInMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
-        const areaInHectares = areaInMeters / 10000;
-        onDrawComplete(areaInHectares, geoJson.geometry);
+  useEffect(() => {
+    if (readOnly && plots.length > 0 && mapRef.current) {
+      const allCoordinates: LngLatLike[] = [];
+      plots.forEach(plot => {
+        if (plot.geoJson && plot.geoJson.coordinates) {
+          plot.geoJson.coordinates[0].forEach((coord: number[]) => {
+            allCoordinates.push([coord[0], coord[1]]);
+          });
+        }
       });
-    });
+      if (allCoordinates.length > 0) {
+        const map = mapRef.current.getMap();
+        const bounds = allCoordinates.reduce((bounds, coord) => {
+          return bounds.extend(coord);
+        }, new (map as any).LngLatBounds(allCoordinates[0], allCoordinates[0]));
 
-    map.on(L.Draw.Event.DELETED, () => {
-      onDrawComplete(0, null);
-    });
-
-     // Geolocation
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
+        mapRef.current.fitBounds(bounds, { padding: 40, duration: 1000 });
+      }
+    } else if (!readOnly) {
+       if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
             (position) => {
-                if (mapInstance.current) {
-                    const userLocation: LatLngTuple = [position.coords.latitude, position.coords.longitude];
-                    mapInstance.current.setView(userLocation, 13);
+                if(mapRef.current) {
+                    setInitialViewState({
+                        longitude: position.coords.longitude,
+                        latitude: position.coords.latitude,
+                        zoom: 13,
+                    })
                 }
             },
             () => {
-                console.log("Geolocation failed or was denied.");
+              console.log("Geolocation failed or was denied.");
             }
-        );
+          );
+      }
     }
+  }, [readOnly, plots]);
 
 
-    return () => {
-      map.remove();
-      mapInstance.current = null;
-    };
-  }, [onDrawComplete]);
-
-  return <div ref={mapRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <Map
+      ref={mapRef}
+      initialViewState={initialViewState}
+      mapStyle={MAPTILER_STYLE_URL}
+      style={{ width: '100%', height: '100%' }}
+      attributionControl={false}
+      mapLib={import('maplibre-gl')}
+    >
+      <NavigationControl position="top-right" />
+      {!readOnly && (
+         <DrawControl
+            position="top-left"
+            displayControlsDefault={false}
+            controls={{
+              polygon: true,
+              trash: true,
+            }}
+            defaultMode="draw_polygon"
+        />
+      )}
+       {readOnly && plots.length > 0 && (
+         <Source type="geojson" data={{type: 'FeatureCollection', features: plots.map(p => ({type: 'Feature', geometry: p.geoJson, properties: {}}))}}>
+           <Layer 
+              id="farm-plots-fill"
+              type="fill"
+              paint={{
+                'fill-color': '#69B166',
+                'fill-opacity': 0.5
+              }}
+            />
+            <Layer 
+              id="farm-plots-stroke"
+              type="line"
+              paint={{
+                'line-color': '#69B166',
+                'line-width': 2
+              }}
+            />
+         </Source>
+       )}
+    </Map>
+  );
 };
 
-export default MapWithDraw;
+// Memoize to prevent unnecessary re-renders
+export default React.memo(MapWithDraw);

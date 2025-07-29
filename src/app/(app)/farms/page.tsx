@@ -37,11 +37,6 @@ interface FarmPlot {
   userId: string;
 }
 
-const getStaticMapUrl = (geoJson: any) => {
-    // Placeholder as we are using Leaflet now
-    return 'https://placehold.co/600x400.png';
-}
-
 
 export default function FarmsPage() {
   const { user } = useAuth();
@@ -78,8 +73,6 @@ export default function FarmsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar talhões: ", error);
-      // Removido o toast de erro para não confundir o usuário quando a coleção está vazia.
-      // O estado de 'nenhum talhão' é tratado na renderização.
       setIsLoading(false);
     });
 
@@ -257,8 +250,8 @@ export default function FarmsPage() {
                 <CardDescription>{plot.culture || 'Cultura não definida'}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                 <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative">
-                    <p className="text-center text-muted-foreground p-4">Visualização de mapa em breve.</p>
+                 <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative bg-muted">
+                    <MapWithDraw plots={[plot]} readOnly />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
