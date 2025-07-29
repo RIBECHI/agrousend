@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -114,7 +114,7 @@ export default function ItemsPage() {
 
     setIsSubmitting(true);
     try {
-        const itemData = {
+        const itemData: any = {
             userId: user.uid,
             name,
             category,
@@ -126,7 +126,9 @@ export default function ItemsPage() {
             await updateDoc(docRef, itemData);
             toast({ title: "Sucesso!", description: "Item atualizado com sucesso." });
         } else {
-            await addDoc(collection(firestore, 'items'), { ...itemData, createdAt: serverTimestamp() });
+            itemData.currentStock = 0; // Initial stock
+            itemData.createdAt = serverTimestamp();
+            await addDoc(collection(firestore, 'items'), itemData);
             toast({ title: "Sucesso!", description: "Item cadastrado com sucesso." });
         }
       
@@ -280,7 +282,7 @@ export default function ItemsPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o item.
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente o item. Os registros de estoque associados não serão removidos, mas podem se tornar órfãos.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -294,3 +296,5 @@ export default function ItemsPage() {
     </>
   );
 }
+
+    

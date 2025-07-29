@@ -159,41 +159,18 @@ export default function InventoryPage() {
   
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <Card>
-            <CardHeader>
-                <CardTitle>Estoque Atual</CardTitle>
-                 <CardDescription>Visão geral dos seus insumos.</CardDescription>
-            </CardHeader>
-          </Card>
-           <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-                <CardTitle>Registrar Entrada</CardTitle>
-                <Button size="icon" variant="outline" className="text-green-500" onClick={() => handleOpenSheet('in')}>
-                    <ArrowUpCircle />
-                </Button>
-            </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">Adicione itens ao seu estoque.</p>
-            </CardContent>
-          </Card>
-           <Card>
-            <CardHeader className='flex flex-row items-center justify-between'>
-                <CardTitle>Registrar Saída</CardTitle>
-                 <Button size="icon" variant="outline" className="text-red-500" onClick={() => handleOpenSheet('out')}>
-                    <ArrowDownCircle />
-                </Button>
-            </CardHeader>
-             <CardContent>
-                <p className="text-sm text-muted-foreground">Dê baixa em itens do seu estoque.</p>
-            </CardContent>
-          </Card>
-           <Card>
-            <CardHeader>
-                <CardTitle>Histórico</CardTitle>
-                 <CardDescription>Veja todas as movimentações.</CardDescription>
-            </CardHeader>
-          </Card>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Controle de Estoque</h1>
+         <div className="flex gap-2">
+             <Button variant="outline" className="text-red-500 border-red-500 hover:bg-red-500 hover:text-white" onClick={() => handleOpenSheet('out')}>
+                <ArrowDownCircle className="mr-2" />
+                Registrar Saída
+            </Button>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleOpenSheet('in')}>
+                <ArrowUpCircle className="mr-2" />
+                Registrar Entrada
+            </Button>
+         </div>
       </div>
 
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -207,7 +184,10 @@ export default function InventoryPage() {
                         {isLoadingItems ? (
                              <p className="text-muted-foreground">Carregando...</p>
                         ) : items.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-4">Nenhum item cadastrado.</p>
+                            <div className="text-center py-4 text-muted-foreground">
+                                <p>Nenhum item cadastrado.</p>
+                                <p className="text-sm">Vá para a página de <a href="/items" className="underline text-primary">Insumos</a> para começar.</p>
+                             </div>
                         ) : (
                             <ul className="space-y-3">
                                 {items.map(item => (
@@ -239,17 +219,19 @@ export default function InventoryPage() {
                                 <p className="mt-1 text-sm text-muted-foreground">Nenhuma entrada ou saída foi registrada ainda.</p>
                             </div>
                         ) : (
-                            <div className="relative">
+                            <div className="relative max-h-[600px] overflow-y-auto pr-2">
                                <div className="absolute left-4 h-full border-l-2 border-dashed border-gray-200 dark:border-gray-700"></div>
                                 <ul className="space-y-6">
                                     {logs.map((log) => (
                                         <li key={log.id} className="relative pl-10">
-                                             <div className={`absolute -left-2 top-1 h-4 w-4 rounded-full ${log.type === 'in' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                             <div className={`absolute -left-2 top-1 h-4 w-4 rounded-full flex items-center justify-center`}>
+                                                <div className={`h-4 w-4 rounded-full ${log.type === 'in' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                             </div>
                                              <div className="flex items-center justify-between">
                                                 <div>
                                                     <p className="font-semibold">{log.itemName}</p>
                                                     <p className={`text-sm font-bold ${log.type === 'in' ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {log.type === 'in' ? '+ ' : '- '}{log.quantity}
+                                                        {log.type === 'in' ? 'Entrada de ' : 'Saída de '}{log.quantity}
                                                     </p>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
@@ -312,3 +294,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
