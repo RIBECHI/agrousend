@@ -75,7 +75,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         edit: {
             featureGroup: drawnItems,
             remove: true,
-            edit: false, // Desabilitando a edição automática
+            edit: false,
         },
       });
       map.addControl(drawControl);
@@ -84,6 +84,9 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         const layer = event.layer;
         drawnItems.clearLayers(); // Limpa desenhos anteriores
         drawnItems.addLayer(layer);
+        
+        // This is the key fix: zoom to the newly drawn layer
+        map.fitBounds(layer.getBounds());
 
         const geoJson = layer.toGeoJSON();
         const areaInMeters = turf.area(geoJson);
