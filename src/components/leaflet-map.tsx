@@ -33,7 +33,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
       });
       mapInstanceRef.current = map;
 
-      if (initialBounds) {
+      if (initialBounds && initialBounds.isValid()) {
         map.fitBounds(initialBounds);
       }
       
@@ -85,9 +85,6 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         drawnItems.clearLayers(); // Limpa desenhos anteriores
         drawnItems.addLayer(layer);
         
-        // This is the key fix: zoom to the newly drawn layer
-        map.fitBounds(layer.getBounds());
-
         const geoJson = layer.toGeoJSON();
         const areaInMeters = turf.area(geoJson);
         const areaInHectares = areaInMeters / 10000;
@@ -107,7 +104,15 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         mapInstanceRef.current = null;
       }
     };
-  }, [onDrawComplete, initialBounds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Effect to handle initialBounds changes after the map is created
+  useEffect(() => {
+    if (mapInstanceRef.current && initialBounds && initialBounds.isValid()) {
+      mapInstanceRef.current.fitBounds(initialBounds);
+    }
+  }, [initialBounds]);
 
   return (
     <div 
@@ -118,3 +123,4 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
 };
 
 export default LeafletMap;
+

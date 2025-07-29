@@ -81,7 +81,8 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             mapInstanceRef.current = null;
           }
         };
-      }, [onBoundsChange]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
 
     // Update plots on map
     useEffect(() => {
@@ -120,3 +121,4 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
 };
 
 export default LeafletMapDisplay;
+

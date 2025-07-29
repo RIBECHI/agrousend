@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
@@ -89,14 +89,14 @@ export default function FarmsPage() {
     return () => unsubscribe();
   }, [user]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setName('');
     setDescription('');
     setCulture('');
     setArea(0);
     setGeoJson(null);
     setIsSubmitting(false);
-  }
+  }, []);
 
   const handleDrawComplete = (areaInHectares: number, geoJsonData: any) => {
     setArea(parseFloat(areaInHectares.toFixed(4)));
@@ -308,3 +308,4 @@ export default function FarmsPage() {
     </>
   );
 }
+
