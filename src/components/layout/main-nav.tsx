@@ -20,6 +20,9 @@ import {
   LayoutDashboard,
   Tag,
   Store,
+  Map,
+  Box,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
