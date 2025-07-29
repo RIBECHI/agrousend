@@ -293,13 +293,21 @@ export default function FeedPage() {
                 ...doc.data()
             } as Post));
             setPosts(fetchedPosts);
-        }, (error) => {
+        }, (error: any) => {
             console.error("Erro ao buscar posts: ", error);
-            toast({
-                variant: "destructive",
-                title: "Erro ao carregar o feed",
-                description: "Houve um problema ao buscar as publicações. Tente novamente mais tarde.",
-            });
+            if (error.code === 'permission-denied') {
+                 toast({
+                    variant: "destructive",
+                    title: "Permissão Negada",
+                    description: "Você não tem permissão para ver o feed. Verifique as Regras de Segurança do Firestore.",
+                });
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Erro ao carregar o feed",
+                    description: "Houve um problema ao buscar as publicações. Tente novamente mais tarde.",
+                });
+            }
         });
 
         return () => unsubscribe();
@@ -672,3 +680,5 @@ export default function FeedPage() {
     </>
   );
 }
+
+    

@@ -76,10 +76,18 @@ export default function FarmsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar talhões: ", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar talhões.",
-      });
+       if (error.code === 'permission-denied') {
+          toast({
+            variant: "destructive",
+            title: "Permissão Negada",
+            description: "Você não tem permissão para ver estes dados. Verifique as Regras de Segurança do Firestore.",
+          });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Erro ao carregar talhões.",
+        });
+      }
       setIsLoading(false);
     });
 
@@ -302,3 +310,5 @@ export default function FarmsPage() {
     </>
   );
 }
+
+    
