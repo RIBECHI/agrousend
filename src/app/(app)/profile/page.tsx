@@ -6,13 +6,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { auth, firestore, storage } from '@/lib/firebase';
 import { deleteUser, updateProfile } from 'firebase/auth';
-import { doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { doc, deleteDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, AlertTriangle, User, ShieldAlert, Pencil, Camera } from 'lucide-react';
+import { Loader, AlertTriangle, User, ShieldAlert, Pencil, Camera, Bell } from 'lucide-react';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { UserRole } from '@/contexts/auth-context';
+import { getMessaging, getToken } from 'firebase/messaging';
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isActivatingNotifications, setIsActivatingNotifications] = useState(false);
 
   // Profile editing state
   const [displayName, setDisplayName] = useState(user?.displayName || '');
@@ -119,6 +121,49 @@ export default function ProfilePage() {
     }
   };
 
+  const handleRequestNotificationPermission = async () => {
+    if (!user) return;
+    setIsActivatingNotifications(true);
+    try {
+        const messaging = getMessaging();
+        const permission = await Notification.requestPermission();
+
+        if (permission === 'granted') {
+            const currentToken = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY_HERE' }); // IMPORTANT: Replace with your actual VAPID key
+            if (currentToken) {
+                const userDocRef = doc(firestore, 'users', user.uid);
+                await updateDoc(userDocRef, {
+                    fcmTokens: arrayUnion(currentToken)
+                });
+                toast({
+                    title: 'Notificações Ativadas!',
+                    description: 'Você receberá notificações neste dispositivo.',
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Não foi possível obter o token',
+                    description: 'Tente novamente mais tarde.',
+                });
+            }
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Permissão Negada',
+                description: 'Você precisa permitir notificações nas configurações do seu navegador.',
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao solicitar permissão de notificação:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Erro de Notificação',
+            description: 'Ocorreu um erro ao tentar ativar as notificações. Verifique o console.',
+        });
+    } finally {
+        setIsActivatingNotifications(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (!user || !auth.currentUser) return;
@@ -273,6 +318,29 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Bell className="h-6 w-6 text-primary" />
+              <CardTitle>Notificações</CardTitle>
+            </div>
+            <CardDescription>
+              Receba alertas de novas mensagens e outras atividades importantes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleRequestNotificationPermission}
+              disabled={isActivatingNotifications}
+            >
+              {isActivatingNotifications ? (
+                <Loader className="mr-2 animate-spin" />
+              ) : null}
+              Ativar Notificações
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="border-destructive">
             <CardHeader>
                 <div className="flex items-center gap-3 text-destructive">
@@ -325,3 +393,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    

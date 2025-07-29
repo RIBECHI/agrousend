@@ -4,6 +4,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getMessaging } from "firebase/messaging";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -24,6 +25,10 @@ const firestore = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 
-export { app, firestore, storage, auth };
+// Initialize Firebase Cloud Messaging and get a reference to the service
+const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+
+export { app, firestore, storage, auth, messaging };
 
     
