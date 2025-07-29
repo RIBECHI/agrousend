@@ -96,8 +96,10 @@ const MapWithDraw = ({ onDrawComplete }: MapWithDrawProps) => {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const userLocation: LatLngTuple = [position.coords.latitude, position.coords.longitude];
-                map.setView(userLocation, 13);
+                if (mapInstance.current) {
+                    const userLocation: LatLngTuple = [position.coords.latitude, position.coords.longitude];
+                    mapInstance.current.setView(userLocation, 13);
+                }
             },
             () => {
                 console.log("Geolocation failed or was denied.");
