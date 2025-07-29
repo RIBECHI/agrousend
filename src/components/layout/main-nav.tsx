@@ -38,7 +38,6 @@ const topLevelNavItems = [
 ];
 
 const managementNavItems = [
-    { href: '/my-farm', label: 'Minha Fazenda', icon: Map },
     { href: '/farms', label: 'Gestão de Talhões', icon: Tractor },
     { href: '/items', label: 'Cadastro de Itens', icon: Tag },
     { href: '/inventory', label: 'Controle de Estoque', icon: Warehouse },
