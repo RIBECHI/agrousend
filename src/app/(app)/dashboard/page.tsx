@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowRight, BarChart3, Tractor, Warehouse, MessageSquare, Calendar, Store, User, Tag } from 'lucide-react';
@@ -21,27 +21,6 @@ const featureCards = [
     href: '/market',
     icon: Store,
     color: 'text-orange-500'
-  },
-  {
-    title: 'Gestão de Talhões',
-    description: 'Desenhe e gerencie as áreas da sua propriedade.',
-    href: '/farms',
-    icon: Tractor,
-    color: 'text-green-500'
-  },
-  {
-    title: 'Cadastro de Itens',
-    description: 'Catalogue seus insumos, sementes e peças.',
-    href: '/items',
-    icon: Tag,
-    color: 'text-purple-500'
-  },
-  {
-    title: 'Controle de Estoque',
-    description: 'Monitore a quantidade dos seus itens cadastrados.',
-    href: '/inventory',
-    icon: Warehouse,
-    color: 'text-yellow-500'
   },
   {
     title: 'Agenda de Eventos',
