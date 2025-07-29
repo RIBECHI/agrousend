@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import dynamic from 'next/dynamic';
 import { LatLngTuple } from 'leaflet';
 import { Loader, PlusCircle, Trash2, MapPin } from 'lucide-react';
 import {
@@ -26,11 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// Carrega o mapa dinamicamente para evitar problemas de SSR com o Leaflet
-const MapWithDraw = dynamic(() => import('@/components/map-with-draw'), {
-  ssr: false,
-  loading: () => <div className="h-full w-full bg-muted flex items-center justify-center"><Loader className="animate-spin" /></div>
-});
+// TODO: Substituir pelo novo componente de mapa de desenho do Google Maps
+const MapPlaceholder = () => (
+    <div className="h-full w-full bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground">O mapa de desenho será carregado aqui.</p>
+    </div>
+);
+
 
 interface FarmPlot {
   id: string;
@@ -225,13 +226,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <MapWithDraw 
-                        onDrawComplete={handleDrawComplete}
-                        onMapStateChange={handleMapStateChange}
-                        center={mapCenter}
-                        zoom={mapZoom}
-                        drawnLayer={geoJson}
-                   />
+                   <MapPlaceholder />
                 </div>
               </div>
               <SheetFooter>
@@ -275,14 +270,7 @@ export default function FarmsPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                  <div className="h-48 w-full rounded-lg overflow-hidden border mb-4">
-                     <MapWithDraw 
-                        onDrawComplete={() => {}}
-                        onMapStateChange={() => {}}
-                        center={plot.mapCenter}
-                        zoom={plot.mapZoom}
-                        drawnLayer={plot.geoJson}
-                        isViewOnly={true}
-                   />
+                     <MapPlaceholder />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
@@ -316,4 +304,3 @@ export default function FarmsPage() {
     </>
   );
 }
-
