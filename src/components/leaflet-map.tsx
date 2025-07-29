@@ -1,10 +1,8 @@
-
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, FeatureGroup } from 'react-leaflet';
-import { EditControl } from 'react-leaflet-draw';
 import L from 'leaflet';
+import 'leaflet-draw';
 import * as turf from '@turf/turf';
 
 // Corrige o problema do ícone padrão do Leaflet no Next.js
@@ -21,67 +19,76 @@ interface LeafletMapProps {
 }
 
 const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
-  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
 
-  const handleCreate = (e: any) => {
-    const { layer } = e;
-    const geoJson = layer.toGeoJSON();
-    const areaInMeters = turf.area(geoJson);
-    const areaInHectares = areaInMeters / 10000;
-    onDrawComplete(areaInHectares, geoJson.geometry);
-  };
-  
   useEffect(() => {
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
+    if (mapContainerRef.current && !mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [-15.7942, -47.8825],
+        zoom: 4,
+        zoomControl: true,
+      });
+      mapInstanceRef.current = map;
 
-  return (
-    <MapContainer 
-      center={[-15.7942, -47.8825]} 
-      zoom={4} 
-      style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}
-      whenCreated={(mapInstance) => {
-        mapRef.current = mapInstance;
-      }}
-    >
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-      />
-      
-      <FeatureGroup>
-        <EditControl
-          position="topright"
-          onCreated={handleCreate}
-          draw={{
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { attribution: 'Tiles &copy; Esri' }
+      ).addTo(map);
+
+      const drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+
+      const drawControl = new L.Control.Draw({
+        position: 'topright',
+        draw: {
+            polygon: {
+                allowIntersection: false,
+                shapeOptions: { color: '#22c55e' },
+            },
+            polyline: false,
             rectangle: false,
             circle: false,
-            circlemarker: false,
             marker: false,
-            polyline: false,
-            polygon: {
-              allowIntersection: false,
-              drawError: {
-                color: '#e1e100',
-                message: '<strong>Oh snap!</strong> you can\'t draw that!',
-              },
-              shapeOptions: {
-                color: '#22c55e',
-              },
-            },
-          }}
-          edit={{
-              edit: false,
-              remove: true,
-          }}
-        />
-      </FeatureGroup>
-    </MapContainer>
+            circlemarker: false,
+        },
+        edit: {
+            featureGroup: drawnItems,
+            remove: true,
+            edit: false,
+        },
+      });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (event: any) => {
+        const layer = event.layer;
+        drawnItems.addLayer(layer);
+
+        const geoJson = layer.toGeoJSON();
+        const areaInMeters = turf.area(geoJson);
+        const areaInHectares = areaInMeters / 10000;
+        onDrawComplete(areaInHectares, geoJson.geometry);
+      });
+       map.on(L.Draw.Event.DELETED, () => {
+        // Quando uma forma é excluída, limpa os dados
+        onDrawComplete(0, null);
+      });
+    }
+
+    // Cleanup
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [onDrawComplete]);
+
+  return (
+    <div 
+      ref={mapContainerRef} 
+      style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }} 
+    />
   );
 };
 

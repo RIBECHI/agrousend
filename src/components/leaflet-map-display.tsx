@@ -1,10 +1,8 @@
-
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import * as turf from '@turf/turf';
+import 'leaflet-draw';
 
 // Corrige o problema do ícone padrão do Leaflet no Next.js
 // @ts-ignore
@@ -32,51 +30,54 @@ const geoJsonStyle = {
     fillOpacity: 0.5,
 };
 
-// Componente para ajustar a visão do mapa para os polígonos
-const MapFitter = ({ plots }: { plots: FarmPlot[] }) => {
-    const map = useMap();
-    useEffect(() => {
-        if (plots && plots.length > 0 && plots[0].geoJson) {
-            const geoJsonLayer = L.geoJSON(plots[0].geoJson);
-            map.fitBounds(geoJsonLayer.getBounds().pad(0.1));
-        }
-    }, [plots, map]);
-
-    return null;
-}
 
 const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
-    const mapRef = useRef<L.Map | null>(null);
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<L.Map | null>(null);
 
-    // Efeito para destruir o mapa ao desmontar o componente, prevenindo o erro
     useEffect(() => {
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
+        if (mapContainerRef.current && !mapInstanceRef.current) {
+            const map = L.map(mapContainerRef.current, {
+                center: [-15.7942, -47.8825],
+                zoom: 4,
+                scrollWheelZoom: false,
+                zoomControl: false,
+            });
+            mapInstanceRef.current = map;
+
+             L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+                attribution: 'Tiles &copy; Esri',
+            }).addTo(map);
+
+            if (plots && plots.length > 0) {
+                 const featureGroup = L.featureGroup();
+                 plots.forEach(plot => {
+                    if (plot.geoJson) {
+                       L.geoJSON(plot.geoJson, { style: geoJsonStyle }).addTo(featureGroup);
+                    }
+                 });
+                 featureGroup.addTo(map);
+                 
+                 if (featureGroup.getBounds().isValid()) {
+                    map.fitBounds(featureGroup.getBounds().pad(0.1));
+                 }
             }
+        }
+    
+        return () => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.remove();
+            mapInstanceRef.current = null;
+          }
         };
-    }, []);
+      }, [plots]);
+
 
   return (
-    <MapContainer 
-      center={[-15.7942, -47.8825]} 
-      zoom={4} 
-      style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}
-      whenCreated={mapInstance => { mapRef.current = mapInstance }}
-      scrollWheelZoom={false}
-      zoomControl={false}
-    >
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        attribution='Tiles &copy; Esri &mdash; Source: Esri'
-      />
-
-      {plots.map(plot => (
-          plot.geoJson && <GeoJSON key={plot.id} data={plot.geoJson} style={geoJsonStyle} />
-      ))}
-      <MapFitter plots={plots} />
-    </MapContainer>
+    <div 
+      ref={mapContainerRef} 
+      style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }} 
+    />
   );
 };
 
