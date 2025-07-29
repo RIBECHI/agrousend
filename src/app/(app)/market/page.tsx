@@ -8,14 +8,17 @@ import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy } from 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon } from 'lucide-react';
+import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon, User, MessageSquare } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { useRouter } from 'next/navigation';
 
 interface Listing {
   id: string;
@@ -37,14 +40,14 @@ const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) 
     reader.onerror = error => reject(error);
 });
 
-const ListingCard = ({ listing }: { listing: Listing }) => {
+const ListingCard = ({ listing, onViewDetails }: { listing: Listing, onViewDetails: (listing: Listing) => void }) => {
     const formattedPrice = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
     }).format(listing.price);
 
     return (
-        <Card className="overflow-hidden flex flex-col">
+        <Card className="overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => onViewDetails(listing)}>
             <CardContent className="p-0">
                 <div className="relative aspect-square bg-muted">
                      <Image 
@@ -70,6 +73,7 @@ const categories = ['Tratores', 'Sementes', 'Fertilizantes', 'Peças', 'Serviço
 export default function MarketPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +92,9 @@ export default function MarketPage() {
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+
+  // Details Modal state
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
   useEffect(() => {
     const listingsCollection = collection(firestore, 'listings');
@@ -200,6 +207,14 @@ export default function MarketPage() {
         return matchesSearch && matchesCategory;
     })
   }, [listings, searchTerm, filterCategory]);
+
+  const formattedPrice = (price: number | undefined) => {
+    if (!price) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    }).format(price);
+  }
 
   return (
     <>
@@ -348,9 +363,70 @@ export default function MarketPage() {
       ) : (
         <div className="grid gap-x-4 gap-y-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+            <ListingCard key={listing.id} listing={listing} onViewDetails={setSelectedListing} />
           ))}
         </div>
+      )}
+
+      {selectedListing && (
+        <Dialog open={!!selectedListing} onOpenChange={(open) => !open && setSelectedListing(null)}>
+            <DialogContent className="sm:max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl">{selectedListing.title}</DialogTitle>
+                </DialogHeader>
+                <div className="grid md:grid-cols-2 gap-6 py-4">
+                    <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+                        <Image 
+                            src={selectedListing.imageUrl || 'https://placehold.co/600x600.png'}
+                            alt={selectedListing.title}
+                            fill
+                            className="object-cover"
+                        />
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-3xl font-bold text-primary">{formattedPrice(selectedListing.price)}</p>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                            <h3 className="font-semibold">Detalhes</h3>
+                            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Tag className="h-4 w-4" />
+                                    <span>{selectedListing.category}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{selectedListing.location}</span>
+                                </div>
+                                 <div className="flex items-center gap-2 col-span-2">
+                                    <User className="h-4 w-4" />
+                                    <span>Vendido por: {selectedListing.authorName}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                            <h3 className="font-semibold">Descrição</h3>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                {selectedListing.description || "Nenhuma descrição fornecida."}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setSelectedListing(null)}>Fechar</Button>
+                    <Button onClick={() => {
+                        setSelectedListing(null);
+                        router.push('/chat');
+                        toast({ title: "Inicie uma conversa com o vendedor!"});
+                    }}>
+                        <MessageSquare className="mr-2" />
+                        Entrar em contato
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       )}
     </>
   );
