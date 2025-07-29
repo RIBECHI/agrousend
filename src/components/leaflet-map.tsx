@@ -88,7 +88,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         const geoJson = layer.toGeoJSON();
         const areaInMeters = turf.area(geoJson);
         const areaInHectares = areaInMeters / 10000;
-        onDrawComplete(areaInHectares, geoJson.geometry);
+        onDrawComplete(areaInHectares, geoJson);
       });
 
        map.on(L.Draw.Event.DELETED, () => {
@@ -123,4 +123,3 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
 };
 
 export default LeafletMap;
-
