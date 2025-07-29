@@ -11,8 +11,12 @@ export default function DashboardRedirect() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace('/feed');
+    if (!loading) {
+      if (user) {
+        router.replace('/feed');
+      } else {
+        router.replace('/');
+      }
     }
   }, [user, loading, router]);
 
