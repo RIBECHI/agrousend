@@ -35,9 +35,6 @@ const nextConfig: NextConfig = {
     })
     return config
   },
-  env: {
-    NEXT_PUBLIC_MAPTILER_KEY: 'OpIi9ZULNHzrESv6T2vL',
-  }
 };
 
 export default nextConfig;

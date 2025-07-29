@@ -14,7 +14,8 @@ interface MapWithDrawProps {
   plots?: any[];
 }
 
-const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/satellite/style.json?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`;
+const MAPTILER_API_KEY = "OpIi9ZULNHzrESv6T2vL";
+const MAPTILER_STYLE_URL = `https://api.maptiler.com/maps/satellite/style.json`;
 
 // Custom hook to wrap the MapboxDraw control
 function DrawControl(props: any) {
@@ -119,6 +120,7 @@ const MapWithDraw = ({ onDrawComplete, readOnly = false, plots = [] }: MapWithDr
       ref={mapRef}
       initialViewState={initialViewState}
       mapStyle={MAPTILER_STYLE_URL}
+      mapTilerApiKey={MAPTILER_API_KEY}
       style={{ width: '100%', height: '100%' }}
       attributionControl={false}
       mapLib={import('maplibre-gl')}
