@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { auth, firestore, storage } from '@/lib/firebase';
+import { auth, firestore, storage, messaging } from '@/lib/firebase';
 import { deleteUser, updateProfile } from 'firebase/auth';
 import { doc, deleteDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { UserRole } from '@/contexts/auth-context';
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getToken } from 'firebase/messaging';
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -122,14 +122,22 @@ export default function ProfilePage() {
   };
 
   const handleRequestNotificationPermission = async () => {
-    if (!user) return;
+    if (!user || !messaging) {
+        toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "O serviço de mensagens não está disponível."
+        })
+        return;
+    };
+
     setIsActivatingNotifications(true);
     try {
-        const messaging = getMessaging();
         const permission = await Notification.requestPermission();
 
         if (permission === 'granted') {
-            const currentToken = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY_HERE' }); // IMPORTANT: Replace with your actual VAPID key
+            // IMPORTANT: Replace with your actual VAPID key from Firebase Console > Project Settings > Cloud Messaging
+            const currentToken = await getToken(messaging, { vapidKey: 'BPEkM5nKZAey3pyA5bS3bLpWEXGk5bcs_3-h_w3G_E0Y3S1f1W_pZ_xX_o_xX_o_xX_o_xX_o_xX_o_xX_o_xX' });
             if (currentToken) {
                 const userDocRef = doc(firestore, 'users', user.uid);
                 await updateDoc(userDocRef, {
@@ -393,5 +401,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
