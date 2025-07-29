@@ -23,11 +23,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { useState, useCallback, useEffect } from 'react';
 import { Loader, Image as ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
 import { brazilianStates } from '@/lib/brazilian-locations';
+
+interface Listing {
+  id: string;
+  userId: string;
+  authorName: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  location: string;
+  imageUrls: string[];
+  createdAt: any;
+  status?: 'active' | 'sold';
+}
 
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -47,10 +61,9 @@ const navItems = [
 
 const categories = ['Tratores', 'Sementes', 'Fertilizantes', 'Peças', 'Serviços', 'Outros'];
 
-const CreateListingSheet = () => {
+export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing, onListingUpdated }: { isSheetOpen: boolean, setIsSheetOpen: (open: boolean) => void, editingListing?: Listing | null, onListingUpdated?: () => void }) => {
     const { user } = useAuth();
     const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
     
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -66,15 +79,43 @@ const CreateListingSheet = () => {
     const [selectedCity, setSelectedCity] = useState('');
     const [cities, setCities] = useState<string[]>([]);
 
+    const isEditing = !!editingListing;
+
+    useEffect(() => {
+      if (isEditing && editingListing) {
+          setTitle(editingListing.title);
+          setDescription(editingListing.description);
+          setPrice(editingListing.price.toString());
+          setCategory(editingListing.category);
+          setImagePreviews(editingListing.imageUrls);
+          
+          const [city, state] = editingListing.location.split(', ');
+          if (state) {
+            const stateData = brazilianStates.find(s => s.sigla === state);
+            if(stateData) {
+              setCities(stateData.cidades);
+              setSelectedState(state);
+            }
+          }
+          if(city) setSelectedCity(city);
+
+      } else {
+        resetForm();
+      }
+  }, [editingListing, isEditing]);
+
+
     useEffect(() => {
         if (selectedState) {
             const stateData = brazilianStates.find(s => s.sigla === selectedState);
             setCities(stateData ? stateData.cidades : []);
-            setSelectedCity(''); // Reset city when state changes
+            if (!isEditing || (editingListing && selectedState !== editingListing.location.split(', ')[1])) {
+              setSelectedCity('');
+            }
         } else {
             setCities([]);
         }
-    }, [selectedState]);
+    }, [selectedState, isEditing, editingListing]);
 
     const removeImage = useCallback((index: number) => {
         setImageFiles(prev => prev.filter((_, i) => i !== index));
@@ -97,7 +138,7 @@ const CreateListingSheet = () => {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
-            const totalImages = imageFiles.length + files.length;
+            const totalImages = imagePreviews.length + files.length;
 
             if (totalImages > MAX_IMAGES) {
                 toast({
@@ -111,14 +152,14 @@ const CreateListingSheet = () => {
             const newFiles = [...imageFiles, ...files];
             setImageFiles(newFiles);
 
-            const newPreviews = files.map(file => URL.createObjectURL(file));
-            setImagePreviews(prev => [...prev, ...newPreviews]);
+            const newPreviewsFromFiles = files.map(file => URL.createObjectURL(file));
+            setImagePreviews(prev => [...prev, ...newPreviewsFromFiles]);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !title || !price || !category || !selectedState || !selectedCity || imageFiles.length === 0) {
+        if (!user || !title || !price || !category || !selectedState || !selectedCity || imagePreviews.length === 0) {
             toast({
                 variant: "destructive",
                 title: "Campos obrigatórios",
@@ -129,38 +170,46 @@ const CreateListingSheet = () => {
 
         setIsSubmitting(true);
         try {
-            const imageUrls = await Promise.all(
+            const newImageUrls = await Promise.all(
                 imageFiles.map(file => toBase64(file))
             );
+            
+            const existingImageUrls = isEditing ? editingListing.imageUrls.filter(url => imagePreviews.includes(url)) : [];
+            const finalImageUrls = [...existingImageUrls, ...newImageUrls];
 
-            const listingData = {
-                userId: user.uid,
-                authorName: user.displayName,
+
+            const listingData: Omit<Listing, 'id' | 'createdAt' | 'userId' | 'authorName'> & { userId?: string, authorName?: string, createdAt?: any } = {
                 title,
                 description,
                 price: parseFloat(price),
                 category,
                 location: `${selectedCity}, ${selectedState}`,
-                createdAt: serverTimestamp(),
-                imageUrls,
+                imageUrls: finalImageUrls,
+                status: editingListing?.status || 'active',
             };
 
-            await addDoc(collection(firestore, 'listings'), listingData);
-
-            toast({
-                title: "Sucesso!",
-                description: "Anúncio publicado com sucesso.",
-            });
+            if(isEditing) {
+              const docRef = doc(firestore, 'listings', editingListing.id);
+              await updateDoc(docRef, listingData);
+              toast({ title: "Sucesso!", description: "Anúncio atualizado." });
+              if(onListingUpdated) onListingUpdated();
+            } else {
+              listingData.userId = user.uid;
+              listingData.authorName = user.displayName;
+              listingData.createdAt = serverTimestamp();
+              await addDoc(collection(firestore, 'listings'), listingData);
+              toast({ title: "Sucesso!", description: "Anúncio publicado." });
+            }
 
             resetForm();
             setIsSheetOpen(false);
 
         } catch (error) {
-            console.error("Erro ao criar anúncio: ", error);
+            console.error("Erro ao salvar anúncio: ", error);
             toast({
                 variant: "destructive",
-                title: "Erro ao publicar",
-                description: "Não foi possível criar o anúncio.",
+                title: `Erro ao ${isEditing ? 'atualizar' : 'publicar'}`,
+                description: `Não foi possível salvar o anúncio.`,
             });
         } finally {
             setIsSubmitting(false);
@@ -173,27 +222,18 @@ const CreateListingSheet = () => {
             if (!open) resetForm();
             setIsSheetOpen(open);
         }}>
-            <SheetTrigger asChild>
-                <button
-                    className={cn(
-                        'flex flex-col items-center justify-center text-xs gap-1 transition-colors w-full h-full text-muted-foreground hover:text-primary'
-                    )}
-                >
-                    <PlusCircle className="h-6 w-6" />
-                    <span>Vender</span>
-                </button>
-            </SheetTrigger>
+           {/* O SheetTrigger é gerenciado externamente agora */}
             <SheetContent className="w-full sm:max-w-lg">
                 <form onSubmit={handleSubmit} className="flex flex-col h-full">
                 <SheetHeader>
-                    <SheetTitle>Criar Novo Anúncio</SheetTitle>
+                    <SheetTitle>{isEditing ? 'Editar Anúncio' : 'Criar Novo Anúncio'}</SheetTitle>
                     <SheetDescription>
-                    Preencha as informações para vender um item no marketplace.
+                    {isEditing ? 'Altere as informações do seu anúncio.' : 'Preencha as informações para vender um item no marketplace.'}
                     </SheetDescription>
                 </SheetHeader>
                 <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
                     <div className="space-y-2">
-                        <Label>Imagens do Anúncio (até {MAX_IMAGES})</Label>
+                        <Label>Imagens (até {MAX_IMAGES})</Label>
                          <div className="grid grid-cols-3 gap-2">
                             {imagePreviews.map((src, index) => (
                                 <div key={index} className="relative aspect-square">
@@ -209,7 +249,7 @@ const CreateListingSheet = () => {
                                     </Button>
                                 </div>
                             ))}
-                             {imageFiles.length < MAX_IMAGES && (
+                             {imagePreviews.length < MAX_IMAGES && (
                                 <div className="flex items-center justify-center aspect-square rounded-lg border border-dashed border-gray-900/25 dark:border-gray-100/25">
                                     <label htmlFor="file-upload" className="flex flex-col items-center justify-center text-center cursor-pointer text-gray-600 hover:text-primary">
                                         <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -278,7 +318,7 @@ const CreateListingSheet = () => {
                     <Button type="button" variant="outline">Cancelar</Button>
                     </SheetClose>
                     <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Publicando...</> : 'Publicar Anúncio'}
+                    {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Publicar Anúncio'}
                     </Button>
                 </SheetFooter>
                 </form>
@@ -293,6 +333,7 @@ export default function MarketLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -304,7 +345,16 @@ export default function MarketLayout({
             <nav className="flex items-center justify-around h-16">
             {navItems.map((item) => {
                 if (item.isSheetTrigger) {
-                    return <CreateListingSheet key={item.href} />;
+                    return (
+                        <button
+                            key={item.href}
+                            onClick={() => setIsSheetOpen(true)}
+                            className={cn('flex flex-col items-center justify-center text-xs gap-1 transition-colors w-full h-full text-muted-foreground hover:text-primary')}
+                        >
+                            <PlusCircle className="h-6 w-6" />
+                            <span>Vender</span>
+                        </button>
+                    )
                 }
                 const isActive = pathname === item.href;
                 return (
@@ -325,8 +375,7 @@ export default function MarketLayout({
             })}
             </nav>
         </footer>
+        <CreateListingSheet isSheetOpen={isSheetOpen} setIsSheetOpen={setIsSheetOpen} />
     </div>
   );
 }
-
-    
