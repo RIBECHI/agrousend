@@ -40,6 +40,10 @@ const LeafletMap = dynamic(() => import('@/components/leaflet-map'), {
     ssr: false 
 });
 
+const LeafletMapDisplay = dynamic(() => import('@/components/leaflet-map-display'), { 
+    ssr: false 
+});
+
 
 export default function FarmsPage() {
   const { user } = useAuth();
@@ -210,7 +214,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <LeafletMap onDrawComplete={handleDrawComplete} mode="draw" />
+                   <LeafletMap onDrawComplete={handleDrawComplete} />
                 </div>
               </div>
               <SheetFooter>
@@ -254,7 +258,7 @@ export default function FarmsPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                  <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative bg-muted">
-                    <LeafletMap plots={[plot]} mode="display" />
+                    <LeafletMapDisplay plots={[plot]} />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
