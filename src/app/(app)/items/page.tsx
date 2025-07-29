@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -64,6 +64,7 @@ export default function ItemsPage() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
   // State for the form
+  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -125,6 +126,21 @@ export default function ItemsPage() {
     setAplicacao('');
     setCodigo('');
     setIsSubmitting(false);
+    setEditingItem(null);
+  }
+
+  const handleEditClick = (item: CatalogItem) => {
+    setEditingItem(item);
+    setName(item.name);
+    setCategory(item.category);
+    setDescription(item.description);
+    setFabricante(item.fabricante || '');
+    setPrincipioAtivo(item.principioAtivo || '');
+    setFormula(item.formula || '');
+    setTipo(item.tipo || '');
+    setAplicacao(item.aplicacao || '');
+    setCodigo(item.codigo || '');
+    setIsSheetOpen(true);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,41 +155,53 @@ export default function ItemsPage() {
     }
 
     setIsSubmitting(true);
-    try {
-      const newItem: Omit<CatalogItem, 'id'> & { createdAt: any } = {
-        userId: user.uid,
+    
+    const itemData: Omit<CatalogItem, 'id' | 'userId'> = {
         name,
         category,
         description,
-        createdAt: serverTimestamp(),
-      };
+        fabricante: category !== 'peças' ? fabricante : '',
+        principioAtivo: category !== 'peças' ? principioAtivo : '',
+        formula: category !== 'peças' ? formula : '',
+        tipo: category === 'peças' ? tipo : '',
+        aplicacao: category === 'peças' ? aplicacao : '',
+        codigo: category === 'peças' ? codigo : '',
+    };
 
-      if (category === 'peças') {
-        newItem.tipo = tipo;
-        newItem.aplicacao = aplicacao;
-        newItem.codigo = codigo;
+
+    try {
+      if (editingItem) {
+        // Update existing item
+        const itemRef = doc(firestore, 'items', editingItem.id);
+        await updateDoc(itemRef, itemData);
+        toast({
+          title: "Sucesso!",
+          description: "Item atualizado com sucesso.",
+        });
+
       } else {
-        newItem.fabricante = fabricante;
-        newItem.principioAtivo = principioAtivo;
-        newItem.formula = formula;
+        // Create new item
+        const newItem = {
+          ...itemData,
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+        };
+        await addDoc(collection(firestore, 'items'), newItem);
+        toast({
+          title: "Sucesso!",
+          description: "Item cadastrado com sucesso.",
+        });
       }
-
-      await addDoc(collection(firestore, 'items'), newItem);
-
-      toast({
-        title: "Sucesso!",
-        description: "Item cadastrado com sucesso.",
-      });
       
       resetForm();
       setIsSheetOpen(false);
 
     } catch (error) {
-      console.error("Erro ao cadastrar item: ", error);
+      console.error("Erro ao salvar item: ", error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Não foi possível cadastrar o item.",
+        description: "Não foi possível salvar o item.",
       });
     } finally {
       setIsSubmitting(false);
@@ -229,9 +257,9 @@ export default function ItemsPage() {
           </SheetTrigger>
           <SheetContent className="flex flex-col">
             <SheetHeader>
-              <SheetTitle>Cadastrar Novo Item</SheetTitle>
+              <SheetTitle>{editingItem ? 'Editar Item' : 'Cadastrar Novo Item'}</SheetTitle>
               <SheetDescription>
-                Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.
+                {editingItem ? 'Altere as informações do item.' : 'Crie um novo item para seu catálogo. Ele poderá ser usado no controle de estoque.'}
               </SheetDescription>
             </SheetHeader>
             <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
@@ -354,7 +382,7 @@ export default function ItemsPage() {
                             <Eye className="h-5 w-5" />
                             <span className="sr-only">Detalhes</span>
                         </Button>
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" onClick={() => handleEditClick(item)}>
                             <Pencil className="h-5 w-5" />
                             <span className="sr-only">Editar</span>
                         </Button>
@@ -456,5 +484,3 @@ export default function ItemsPage() {
     </>
   );
 }
-
-    
