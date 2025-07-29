@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { capitalizeName } from '@/lib/utils';
 
 interface Listing {
   id: string;
@@ -188,7 +189,7 @@ export default function ListingDetailPage() {
                             </div>
                                 <div className="flex items-center gap-2 col-span-2">
                                 <User className="h-5 w-5" />
-                                <span>Vendido por: {listing.authorName}</span>
+                                <span>Vendido por: <Link href={`/profile/${listing.userId}`} className="font-medium text-foreground hover:underline">{capitalizeName(listing.authorName)}</Link></span>
                             </div>
                         </div>
                     </div>

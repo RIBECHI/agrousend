@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import Link from 'next/link';
 
 
 interface ForumTopic {
@@ -263,7 +264,7 @@ export default function ForumPage() {
                                                     {topic.title}
                                                 </button>
                                                 <p className="text-sm text-muted-foreground">
-                                                    por {capitalizeName(topic.authorName)} em {topic.createdAt ? format(topic.createdAt.toDate(), 'dd/MM/yyyy') : '...'}
+                                                    por <Link href={`/profile/${topic.authorId}`} className="hover:underline font-medium">{capitalizeName(topic.authorName)}</Link> em {topic.createdAt ? format(topic.createdAt.toDate(), 'dd/MM/yyyy') : '...'}
                                                 </p>
                                             </div>
                                         </div>
@@ -299,11 +300,13 @@ export default function ForumPage() {
                     <div>
                         <CardTitle className="text-2xl">{selectedTopic.title}</CardTitle>
                         <CardDescription className="flex items-center gap-2 mt-2">
-                             <Avatar className="h-6 w-6">
-                                <AvatarImage src={selectedTopic.authorPhotoURL || undefined} />
-                                <AvatarFallback>{selectedTopic.authorName?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            Iniciado por {capitalizeName(selectedTopic.authorName)} - {selectedTopic.createdAt ? formatDistanceToNow(selectedTopic.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
+                            <Link href={`/profile/${selectedTopic.authorId}`}>
+                                <Avatar className="h-6 w-6">
+                                    <AvatarImage src={selectedTopic.authorPhotoURL || undefined} />
+                                    <AvatarFallback>{selectedTopic.authorName?.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                            </Link>
+                            Iniciado por <Link href={`/profile/${selectedTopic.authorId}`} className="hover:underline font-medium">{capitalizeName(selectedTopic.authorName)}</Link> - {selectedTopic.createdAt ? formatDistanceToNow(selectedTopic.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
                         </CardDescription>
                     </div>
                     {user?.uid === selectedTopic.authorId && (
@@ -329,11 +332,15 @@ export default function ForumPage() {
                     <Card key={reply.id} className="bg-secondary/50">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={reply.authorPhotoURL || undefined} />
-                                    <AvatarFallback>{reply.authorName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <p className="font-semibold">{capitalizeName(reply.authorName)}</p>
+                                <Link href={`/profile/${reply.authorId}`}>
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={reply.authorPhotoURL || undefined} />
+                                        <AvatarFallback>{reply.authorName?.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                </Link>
+                                <Link href={`/profile/${reply.authorId}`} className="hover:underline">
+                                    <p className="font-semibold">{capitalizeName(reply.authorName)}</p>
+                                </Link>
                             </div>
                             <p className="text-sm text-muted-foreground">
                                 {reply.createdAt ? formatDistanceToNow(reply.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
@@ -395,5 +402,3 @@ export default function ForumPage() {
     </>
   );
 }
-
-    

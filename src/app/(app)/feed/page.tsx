@@ -125,12 +125,16 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
             <CardHeader>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                        <Avatar>
-                            <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
-                            <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <Link href={`/profile/${post.authorId}`}>
+                            <Avatar>
+                                <AvatarImage src={post.authorPhotoURL || undefined} alt={post.authorName} />
+                                <AvatarFallback>{post.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                        </Link>
                         <div>
-                            <CardTitle className="text-base">{capitalizeName(post.authorName)}</CardTitle>
+                            <Link href={`/profile/${post.authorId}`} className="hover:underline">
+                                <CardTitle className="text-base">{capitalizeName(post.authorName)}</CardTitle>
+                            </Link>
                             <CardDescription>
                                 {post.createdAt ? formatDistanceToNow(post.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : 'agora mesmo'}
                             </CardDescription>
@@ -241,13 +245,17 @@ const PostCard = ({ post, user, openDeleteDialog, handleLikeToggle }: { post: Po
                 <div className="w-full space-y-4">
                     {comments.map(comment => (
                         <div key={comment.id} className="flex items-start gap-3">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src={comment.authorPhotoURL || undefined} alt={comment.authorName} />
-                                <AvatarFallback>{comment.authorName.charAt(0).toUpperCase()}</AvatarFallback>
-                            </Avatar>
+                           <Link href={`/profile/${comment.authorId}`}>
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={comment.authorPhotoURL || undefined} alt={comment.authorName} />
+                                    <AvatarFallback>{comment.authorName.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                            </Link>
                             <div className="bg-muted p-3 rounded-lg w-full">
                                 <div className="flex items-center justify-between">
-                                    <p className="font-semibold text-sm">{capitalizeName(comment.authorName)}</p>
+                                     <Link href={`/profile/${comment.authorId}`} className="hover:underline">
+                                        <p className="font-semibold text-sm">{capitalizeName(comment.authorName)}</p>
+                                     </Link>
                                     <p className="text-xs text-muted-foreground">
                                          {comment.createdAt ? formatDistanceToNow(comment.createdAt.toDate(), { addSuffix: true, locale: ptBR }) : ''}
                                     </p>
@@ -664,10 +672,3 @@ export default function FeedPage() {
     </>
   );
 }
-
-
-    
-
-    
-
-    
