@@ -35,7 +35,9 @@ const geoJsonStyle = {
 const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
+    const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
 
+    // Initialize map
     useEffect(() => {
         if (mapContainerRef.current && !mapInstanceRef.current) {
             const map = L.map(mapContainerRef.current, {
@@ -45,37 +47,24 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             });
             mapInstanceRef.current = map;
 
-            const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
                 attribution: 'Tiles &copy; Esri',
             }).addTo(map);
 
-            // Create a pane for the labels to ensure they are on top
             map.createPane('labels');
             const labelsPane = map.getPane('labels');
             if (labelsPane) {
                 labelsPane.style.zIndex = '650';
-                labelsPane.style.pointerEvents = 'none'; // Clicks go through to the map
+                labelsPane.style.pointerEvents = 'none';
             }
 
-            const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 pane: 'labels'
             }).addTo(map);
             
-
-            if (plots && plots.length > 0) {
-                 const featureGroup = L.featureGroup();
-                 plots.forEach(plot => {
-                    if (plot.geoJson) {
-                       L.geoJSON(plot.geoJson, { style: geoJsonStyle }).addTo(featureGroup);
-                    }
-                 });
-                 featureGroup.addTo(map);
-                 
-                 if (featureGroup.getBounds().isValid()) {
-                    map.fitBounds(featureGroup.getBounds().pad(0.1));
-                 }
-            }
+            drawnItemsRef.current = new L.FeatureGroup();
+            map.addLayer(drawnItemsRef.current);
         }
     
         return () => {
@@ -84,7 +73,34 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             mapInstanceRef.current = null;
           }
         };
-      }, [plots]);
+      }, []); // Empty dependency array ensures this runs only once to initialize the map
+
+    // Update plots on map
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        const drawnItems = drawnItemsRef.current;
+
+        if (map && drawnItems) {
+            // Clear previous layers
+            drawnItems.clearLayers();
+
+            if (plots && plots.length > 0) {
+                plots.forEach(plot => {
+                    if (plot.geoJson) {
+                       L.geoJSON(plot.geoJson, { style: geoJsonStyle }).addTo(drawnItems);
+                    }
+                });
+                
+                const bounds = drawnItems.getBounds();
+                if (bounds.isValid()) {
+                   map.fitBounds(bounds.pad(0.1));
+                }
+            } else {
+                 // If no plots, set to default view
+                 map.setView([-15.7942, -47.8825], 4);
+            }
+        }
+    }, [plots]); // This effect re-runs whenever the plots array changes
 
 
   return (
