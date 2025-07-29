@@ -37,17 +37,17 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
         { attribution: 'Tiles &copy; Esri' }
       ).addTo(map);
 
-      const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      });
+      const labelsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          pane: 'shadowPane' // Renderiza as legendas em um painel "superior"
+      }).addTo(map);
 
-      const baseMaps = {
-          "Satélite": satelliteLayer,
-          "Ruas": streetLayer
-      };
-
-      L.control.layers(baseMaps).addTo(map);
-
+      // Garante que o painel de legendas tenha um z-index maior e não bloqueie os cliques
+      const pane = map.getPane('shadowPane');
+      if (pane) {
+        pane.style.zIndex = '650';
+        pane.style.pointerEvents = 'none';
+      }
 
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);

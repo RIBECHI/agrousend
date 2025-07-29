@@ -41,7 +41,7 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             const map = L.map(mapContainerRef.current, {
                 center: [-15.7942, -47.8825],
                 zoom: 4,
-                zoomControl: true, // Habilitado por padrão, mas bom ser explícito
+                zoomControl: true,
             });
             mapInstanceRef.current = map;
 
@@ -49,16 +49,18 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
                 attribution: 'Tiles &copy; Esri',
             }).addTo(map);
 
-            const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            });
+            const labelsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                pane: 'shadowPane' // Renderiza as legendas em um painel "superior"
+            }).addTo(map);
+            
+            // Garante que o painel de legendas tenha um z-index maior e não bloqueie os cliques
+            const pane = map.getPane('shadowPane');
+            if(pane) {
+                pane.style.zIndex = '650';
+                pane.style.pointerEvents = 'none';
+            }
 
-            const baseMaps = {
-                "Satélite": satelliteLayer,
-                "Ruas": streetLayer
-            };
-
-            L.control.layers(baseMaps).addTo(map);
 
             if (plots && plots.length > 0) {
                  const featureGroup = L.featureGroup();
