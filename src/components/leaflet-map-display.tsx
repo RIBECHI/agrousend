@@ -46,13 +46,14 @@ const MapFitter = ({ plots }: { plots: FarmPlot[] }) => {
 }
 
 const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
-    const mapRef = useRef<L.Map>(null);
+    const mapRef = useRef<L.Map | null>(null);
 
     // Efeito para destruir o mapa ao desmontar o componente, prevenindo o erro
     useEffect(() => {
         return () => {
             if (mapRef.current) {
                 mapRef.current.remove();
+                mapRef.current = null;
             }
         };
     }, []);
@@ -62,7 +63,6 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
       center={[-15.7942, -47.8825]} 
       zoom={4} 
       style={{ height: '100%', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}
-      // @ts-ignore
       whenCreated={mapInstance => { mapRef.current = mapInstance }}
       scrollWheelZoom={false}
       zoomControl={false}
