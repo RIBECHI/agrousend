@@ -1,7 +1,6 @@
 
 'use client';
 
-import 'maplibre-gl';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Map, { MapRef, NavigationControl, useControl, Source, Layer } from 'react-map-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
