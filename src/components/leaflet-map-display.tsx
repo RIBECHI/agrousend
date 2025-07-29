@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import L from 'leaflet';
+import L, { LatLngBounds } from 'leaflet';
 import 'leaflet-draw';
 
 // Corrige o problema do ícone padrão do Leaflet no Next.js
@@ -22,6 +22,7 @@ interface FarmPlot {
 
 interface LeafletMapDisplayProps {
   plots: FarmPlot[];
+  onBoundsChange: (bounds: LatLngBounds) => void;
 }
 
 const geoJsonStyle = {
@@ -32,7 +33,7 @@ const geoJsonStyle = {
 };
 
 
-const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
+const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsChange }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
@@ -65,6 +66,13 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             
             drawnItemsRef.current = new L.FeatureGroup();
             map.addLayer(drawnItemsRef.current);
+            
+            const handleBoundsChange = () => {
+                onBoundsChange(map.getBounds());
+            };
+
+            map.on('moveend', handleBoundsChange);
+            map.on('zoomend', handleBoundsChange);
         }
     
         return () => {
@@ -73,7 +81,7 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             mapInstanceRef.current = null;
           }
         };
-      }, []); // Empty dependency array ensures this runs only once to initialize the map
+      }, [onBoundsChange]);
 
     // Update plots on map
     useEffect(() => {

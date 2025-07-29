@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { LatLngBounds } from 'leaflet';
 
 
 interface FarmPlot {
@@ -63,6 +64,8 @@ export default function FarmsPage() {
   
   const [plotToDelete, setPlotToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  
+  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -214,7 +217,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <LeafletMap onDrawComplete={handleDrawComplete} />
+                   <LeafletMap onDrawComplete={handleDrawComplete} initialBounds={mapBounds}/>
                 </div>
               </div>
               <SheetFooter>
@@ -259,7 +262,7 @@ export default function FarmsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="h-[400px] w-full rounded-lg overflow-hidden border relative bg-muted">
-                        <LeafletMapDisplay plots={plots} />
+                        <LeafletMapDisplay plots={plots} onBoundsChange={setMapBounds} />
                     </div>
                 </CardContent>
             </Card>

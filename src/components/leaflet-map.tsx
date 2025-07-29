@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import L from 'leaflet';
+import L, { LatLngBounds } from 'leaflet';
 import 'leaflet-draw';
 import * as turf from '@turf/turf';
 
@@ -17,9 +17,10 @@ L.Icon.Default.mergeOptions({
 
 interface LeafletMapProps {
   onDrawComplete: (areaInHectares: number, geoJson: any) => void;
+  initialBounds: LatLngBounds | null;
 }
 
-const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
+const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
@@ -31,6 +32,10 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
         zoomControl: true,
       });
       mapInstanceRef.current = map;
+
+      if (initialBounds) {
+        map.fitBounds(initialBounds);
+      }
       
       const satelliteLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -99,7 +104,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
         mapInstanceRef.current = null;
       }
     };
-  }, [onDrawComplete]);
+  }, [onDrawComplete, initialBounds]);
 
   return (
     <div 
