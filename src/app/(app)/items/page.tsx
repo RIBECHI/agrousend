@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 
 interface CatalogItem {
@@ -42,14 +44,14 @@ interface CatalogItem {
   codigo?: string;
 }
 
-const categoryConfig: { [key: string]: { icon: React.ElementType, color: string } } = {
-  fungicida: { icon: SprayCan, color: 'text-blue-500' },
-  inseticida: { icon: Bug, color: 'text-red-500' },
-  fertilizante: { icon: Beaker, color: 'text-green-500' },
-  herbicida: { icon: Leaf, color: 'text-yellow-500' },
-  sementes: { icon: Tractor, color: 'text-orange-500' },
-  peças: { icon: Cog, color: 'text-gray-500' },
-  default: { icon: Tractor, color: 'text-gray-400' },
+const categoryConfig: { [key: string]: { icon: React.ElementType, color: string, label: string } } = {
+  fungicida: { icon: SprayCan, color: 'text-blue-500', label: 'Fungicida' },
+  inseticida: { icon: Bug, color: 'text-red-500', label: 'Inseticida' },
+  fertilizante: { icon: Beaker, color: 'text-green-500', label: 'Fertilizante' },
+  herbicida: { icon: Leaf, color: 'text-yellow-500', label: 'Herbicida' },
+  sementes: { icon: Tractor, color: 'text-orange-500', label: 'Sementes' },
+  peças: { icon: Cog, color: 'text-gray-500', label: 'Peças' },
+  default: { icon: Tractor, color: 'text-gray-400', label: 'Item' },
 };
 
 
@@ -75,6 +77,9 @@ export default function ItemsPage() {
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -178,6 +183,11 @@ export default function ItemsPage() {
   const openDeleteDialog = (itemId: string) => {
     setItemToDelete(itemId);
     setShowDeleteAlert(true);
+  }
+  
+  const openDetailsDialog = (item: CatalogItem) => {
+    setSelectedItem(item);
+    setShowDetailsDialog(true);
   }
 
   const handleDeleteItem = async (itemId: string | null) => {
@@ -338,9 +348,9 @@ export default function ItemsPage() {
                         <Icon className={cn("h-6 w-6", config.color)} />
                       </TableCell>
                       <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.category}</TableCell>
+                      <TableCell className="text-muted-foreground">{config.label}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="icon">
+                        <Button variant="outline" size="icon" onClick={() => openDetailsDialog(item)}>
                             <Eye className="h-5 w-5" />
                             <span className="sr-only">Detalhes</span>
                         </Button>
@@ -360,6 +370,7 @@ export default function ItemsPage() {
           </Table>
         </Card>
       )}
+
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -376,6 +387,74 @@ export default function ItemsPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        {selectedItem && (
+             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl">{selectedItem.name}</DialogTitle>
+                        <DialogDescription>
+                            Detalhes completos do item cadastrado.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Separator />
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-3 items-center gap-4">
+                            <Label className="text-right text-muted-foreground">Categoria</Label>
+                            <span className="col-span-2 font-medium">{categoryConfig[selectedItem.category]?.label || 'N/A'}</span>
+                        </div>
+                        
+                        {selectedItem.category === 'peças' ? (
+                            <>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Tipo</Label>
+                                    <span className="col-span-2">{selectedItem.tipo || 'N/A'}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Aplicação</Label>
+                                    <span className="col-span-2">{selectedItem.aplicacao || 'N/A'}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Código</Label>
+                                    <span className="col-span-2">{selectedItem.codigo || 'N/A'}</span>
+                                </div>
+                            </>
+                        ) : (
+                             <>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Fabricante</Label>
+                                    <span className="col-span-2">{selectedItem.fabricante || 'N/A'}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Princípio Ativo</Label>
+                                    <span className="col-span-2">{selectedItem.principioAtivo || 'N/A'}</span>
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label className="text-right text-muted-foreground">Fórmula</Label>
+                                    <span className="col-span-2">{selectedItem.formula || 'N/A'}</span>
+                                </div>
+                            </>
+                        )}
+                         <Separator />
+                        <div className="space-y-2">
+                            <Label className="text-muted-foreground">Descrição/Observações</Label>
+                            <p className="text-sm p-3 bg-muted rounded-md min-h-[60px]">
+                                {selectedItem.description || 'Nenhuma descrição fornecida.'}
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="secondary">
+                                Fechar
+                            </Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        )}
     </>
   );
 }
+
+    
