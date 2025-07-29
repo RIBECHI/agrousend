@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare } from 'lucide-react';
+import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare, User } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,8 +73,8 @@ export default function MarketSearchPage() {
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('Todos');
-  const [filterState, setFilterState] = useState('');
-  const [filterCity, setFilterCity] = useState('');
+  const [filterState, setFilterState] = useState('all');
+  const [filterCity, setFilterCity] = useState('all');
   const [cities, setCities] = useState<string[]>([]);
   const [filterDistance, setFilterDistance] = useState('Qualquer');
 
@@ -82,10 +82,10 @@ export default function MarketSearchPage() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
   useEffect(() => {
-    if (filterState) {
+    if (filterState && filterState !== 'all') {
         const selectedStateData = brazilianStates.find(s => s.sigla === filterState);
         setCities(selectedStateData ? selectedStateData.cidades : []);
-        setFilterCity(''); // Reseta a cidade quando o estado muda
+        setFilterCity('all'); // Reseta a cidade quando o estado muda
     } else {
         setCities([]);
     }
@@ -122,9 +122,9 @@ export default function MarketSearchPage() {
         const stateInfo = brazilianStates.find(s => s.sigla === filterState);
         const stateName = stateInfo ? stateInfo.nome.toLowerCase() : '';
 
-        const matchesLocation = (!filterState && !filterCity) || 
-                                (filterState && !filterCity && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase()))) ||
-                                (filterState && filterCity && locationString.includes(filterCity.toLowerCase()) && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase())));
+        const matchesLocation = (filterState === 'all' && filterCity === 'all') || 
+                                (filterState !== 'all' && filterCity === 'all' && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase()))) ||
+                                (filterState !== 'all' && filterCity !== 'all' && locationString.includes(filterCity.toLowerCase()) && (locationString.includes(stateName) || locationString.includes(filterState.toLowerCase())));
         
         return matchesSearch && matchesCategory && matchesLocation;
     })
@@ -203,16 +203,16 @@ export default function MarketSearchPage() {
                     <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Todos os Estados</SelectItem>
+                    <SelectItem value="all">Todos os Estados</SelectItem>
                     {brazilianStates.map(state => <SelectItem key={state.sigla} value={state.sigla}>{state.nome}</SelectItem>)}
                 </SelectContent>
             </Select>
-            <Select value={filterCity} onValueChange={setFilterCity} disabled={!filterState}>
+            <Select value={filterCity} onValueChange={setFilterCity} disabled={!filterState || filterState === 'all'}>
                 <SelectTrigger>
                     <SelectValue placeholder="Cidade" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Todas as Cidades</SelectItem>
+                    <SelectItem value="all">Todas as Cidades</SelectItem>
                     {cities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
                 </SelectContent>
             </Select>
@@ -262,6 +262,10 @@ export default function MarketSearchPage() {
                                 <MapPin className="h-4 w-4" />
                                 <span>{selectedListing.location}</span>
                             </div>
+                            <div className="flex items-center gap-2 col-span-2">
+                                <User className="h-4 w-4" />
+                                <span>Vendido por: {selectedListing.authorName}</span>
+                            </div>
                         </div>
                     </div>
                     <Separator />
@@ -290,5 +294,3 @@ export default function MarketSearchPage() {
     </>
   );
 }
-
-    
