@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  transpilePackages: ['react-map-gl', 'mapbox-gl-draw'],
   images: {
     remotePatterns: [
       {
