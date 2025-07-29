@@ -87,10 +87,11 @@ function GoogleMapDisplay({ plots }: GoogleMapDisplayProps) {
       onUnmount={onUnmount}
       mapTypeId="satellite"
       options={{
-        tilt: 45,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        rotateControl: true,
+        scaleControl: true
       }}
     >
       {plots.map(plot => (
