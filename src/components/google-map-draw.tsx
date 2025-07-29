@@ -18,21 +18,12 @@ const defaultCenter = {
   lng: -47.8825, // Default to Brazil
 };
 
-const drawingOptions = {
-    drawingControl: true,
-    drawingControlOptions: {
-      position: google.maps.ControlPosition.TOP_CENTER,
-      drawingModes: [
-        google.maps.drawing.OverlayType.POLYGON,
-      ],
-    },
-    polygonOptions: {
-      fillColor: "rgba(142, 60%, 45%, 0.4)",
-      strokeColor: "hsl(142, 60%, 35%)",
-      strokeWeight: 2,
-      editable: true,
-      draggable: true,
-    },
+const polygonOptions = {
+    fillColor: "rgba(142, 60%, 45%, 0.4)",
+    strokeColor: "hsl(142, 60%, 35%)",
+    strokeWeight: 2,
+    editable: true,
+    draggable: true,
 };
 
 
@@ -61,15 +52,20 @@ function GoogleMapDraw({ onDrawComplete }: GoogleMapDrawProps) {
         coordinates: [coordinates]
     };
     
-    const areaInMeters = google.maps.geometry.spherical.computeArea(polygon.getPath());
-    const areaInHectares = areaInMeters / 10000;
+    if (window.google && window.google.maps && window.google.maps.geometry) {
+        const areaInMeters = google.maps.geometry.spherical.computeArea(polygon.getPath());
+        const areaInHectares = areaInMeters / 10000;
+        onDrawComplete(areaInHectares, geoJson);
+    }
     
-    onDrawComplete(areaInHectares, geoJson);
 
     // Desativa o modo de desenho
-    polygon.getMap()?.setOptions({
-        drawingMode: null,
-    });
+    if (polygon.getMap()) {
+      polygon.getMap()?.setOptions({
+          drawingMode: null,
+      });
+    }
+
 
   }, [drawnPolygon, onDrawComplete]);
   
@@ -101,6 +97,17 @@ function GoogleMapDraw({ onDrawComplete }: GoogleMapDrawProps) {
   if (loadError) {
     return <div>Erro ao carregar o mapa. Verifique a chave da API.</div>;
   }
+
+  const drawingOptions: google.maps.drawing.DrawingManagerOptions | undefined = isLoaded ? {
+      drawingControl: true,
+      drawingControlOptions: {
+        position: google.maps.ControlPosition.TOP_CENTER,
+        drawingModes: [
+          google.maps.drawing.OverlayType.POLYGON,
+        ],
+      },
+      polygonOptions: polygonOptions,
+  } : undefined;
 
   return isLoaded ? (
     <GoogleMap
