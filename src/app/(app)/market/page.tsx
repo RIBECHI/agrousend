@@ -13,12 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon, User, MessageSquare } from 'lucide-react';
+import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon, User, MessageSquare, ArrowLeft, Bell } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Listing {
   id: string;
@@ -59,8 +60,8 @@ const ListingCard = ({ listing, onViewDetails }: { listing: Listing, onViewDetai
                     />
                 </div>
                 <div className="p-4 space-y-2">
-                    <p className="text-xl font-bold">{formattedPrice}</p>
-                    <p className="text-lg font-semibold leading-tight">{listing.title}</p>
+                    <p className="text-lg font-bold">{formattedPrice}</p>
+                    <p className="font-semibold leading-tight">{listing.title}</p>
                     <p className="text-sm text-muted-foreground">{listing.location}</p>
                 </div>
             </CardContent>
@@ -218,216 +219,211 @@ export default function MarketPage() {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Marketplace</h1>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    placeholder="Buscar anúncios..." 
-                    className="pl-10" 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
-             <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Categorias" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                </SelectContent>
-            </Select>
-
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-4">
+        <Button variant="ghost" asChild>
+          <Link href="/feed">
+            <ArrowLeft />
+            <span className="ml-2 font-semibold">Feed</span>
+          </Link>
+        </Button>
+        <h1 className="text-xl font-bold">Marketplace</h1>
+        <Button variant="ghost" size="icon">
+          <Bell />
+          <span className="sr-only">Notificações</span>
+        </Button>
+    </header>
+    <div className="p-4 space-y-4">
+        <div className="flex justify-between items-center gap-4">
+            <h1 className="text-2xl font-bold">Anúncios</h1>
             <Sheet open={isSheetOpen} onOpenChange={(open) => {
-                if(!open) resetForm();
-                setIsSheetOpen(open);
-            }}>
-            <SheetTrigger asChild>
-                <Button className="w-full md:w-auto">
-                <PlusCircle className="mr-2" />
-                Criar Anúncio
-                </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-lg">
-                <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                <SheetHeader>
-                    <SheetTitle>Criar Novo Anúncio</SheetTitle>
-                    <SheetDescription>
-                    Preencha as informações para vender um item no marketplace.
-                    </SheetDescription>
-                </SheetHeader>
-                <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
-                    <div className="space-y-1">
-                        <Label>Imagem do Anúncio</Label>
-                        {imagePreview ? (
-                            <div className="relative">
-                                <Image src={imagePreview} alt="Preview do anúncio" width={200} height={200} className="rounded-md object-cover w-full aspect-square" />
-                                <Button variant="destructive" size="sm" onClick={removeImage} className="absolute top-2 right-2">Remover</Button>
-                            </div>
-                        ) : (
-                            <div className="flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 dark:border-gray-100/25">
-                                <div className="text-center">
-                                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                    <div className="mt-4 flex text-sm leading-6 text-gray-600">
-                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary-dark dark:bg-transparent">
-                                        <span>Selecione uma imagem</span>
-                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" required/>
-                                    </label>
-                                    <p className="pl-1 dark:text-gray-400">ou arraste e solte</p>
-                                    </div>
-                                    <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 2MB</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="title">Título</Label>
-                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ex: Trator John Deere 6110J" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="price">Preço (R$)</Label>
-                            <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} required placeholder="Ex: 250000" />
-                        </div>
-                         <div className="space-y-1">
-                            <Label htmlFor="category">Categoria</Label>
-                            <Select value={category} onValueChange={setCategory} required>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="location">Localização</Label>
-                        <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} required placeholder="Ex: Rondonópolis, MT" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="description">Descrição</Label>
-                        <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="Fale mais sobre o item, condição, etc."/>
-                    </div>
-                    
-                </div>
-                <SheetFooter className="pt-4 mt-auto">
-                    <SheetClose asChild>
-                    <Button type="button" variant="outline">Cancelar</Button>
-                    </SheetClose>
-                    <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Publicando...</> : 'Publicar Anúncio'}
+                    if(!open) resetForm();
+                    setIsSheetOpen(open);
+                }}>
+                <SheetTrigger asChild>
+                    <Button>
+                    <PlusCircle className="mr-2" />
+                    Criar Anúncio
                     </Button>
-                </SheetFooter>
-                </form>
-            </SheetContent>
+                </SheetTrigger>
+                <SheetContent className="w-full sm:max-w-lg">
+                    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                    <SheetHeader>
+                        <SheetTitle>Criar Novo Anúncio</SheetTitle>
+                        <SheetDescription>
+                        Preencha as informações para vender um item no marketplace.
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
+                        <div className="space-y-1">
+                            <Label>Imagem do Anúncio</Label>
+                            {imagePreview ? (
+                                <div className="relative">
+                                    <Image src={imagePreview} alt="Preview do anúncio" width={200} height={200} className="rounded-md object-cover w-full aspect-square" />
+                                    <Button variant="destructive" size="sm" onClick={removeImage} className="absolute top-2 right-2">Remover</Button>
+                                </div>
+                            ) : (
+                                <div className="flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 dark:border-gray-100/25">
+                                    <div className="text-center">
+                                        <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                        <div className="mt-4 flex text-sm leading-6 text-gray-600">
+                                        <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary-dark dark:bg-transparent">
+                                            <span>Selecione uma imagem</span>
+                                            <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" required/>
+                                        </label>
+                                        <p className="pl-1 dark:text-gray-400">ou arraste e solte</p>
+                                        </div>
+                                        <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 2MB</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="title">Título</Label>
+                            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ex: Trator John Deere 6110J" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <Label htmlFor="price">Preço (R$)</Label>
+                                <Input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} required placeholder="Ex: 250000" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="category">Categoria</Label>
+                                <Select value={category} onValueChange={setCategory} required>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="location">Localização</Label>
+                            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} required placeholder="Ex: Rondonópolis, MT" />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="description">Descrição</Label>
+                            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={5} placeholder="Fale mais sobre o item, condição, etc."/>
+                        </div>
+                        
+                    </div>
+                    <SheetFooter className="pt-4 mt-auto">
+                        <SheetClose asChild>
+                        <Button type="button" variant="outline">Cancelar</Button>
+                        </SheetClose>
+                        <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Publicando...</> : 'Publicar Anúncio'}
+                        </Button>
+                    </SheetFooter>
+                    </form>
+                </SheetContent>
             </Sheet>
         </div>
-      </div>
 
-      {isLoading ? (
-         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-                <Card key={i}>
-                    <CardContent className="p-0">
-                        <Skeleton className="w-full aspect-square" />
-                         <div className="p-4 space-y-2">
-                             <Skeleton className="h-7 w-1/3" />
-                             <Skeleton className="h-6 w-3/4" />
-                             <Skeleton className="h-5 w-1/2" />
-                        </div>
-                    </CardContent>
-                </Card>
+        {isLoading ? (
+            <div className="grid gap-x-4 gap-y-8 grid-cols-2 md:grid-cols-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                    <Card key={i}>
+                        <CardContent className="p-0">
+                            <Skeleton className="w-full aspect-square" />
+                            <div className="p-4 space-y-2">
+                                <Skeleton className="h-7 w-1/3" />
+                                <Skeleton className="h-6 w-3/4" />
+                                <Skeleton className="h-5 w-1/2" />
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        ) : filteredListings.length === 0 ? (
+            <Card className="text-center py-20 col-span-full">
+                <CardHeader>
+                    <CardTitle>Nenhum anúncio encontrado</CardTitle>
+                    <CardDescription>
+                        {searchTerm || filterCategory !== 'all' 
+                            ? "Tente ajustar seus filtros ou busca."
+                            : "Ainda não há produtos à venda. Que tal criar o primeiro anúncio?"
+                        }
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={() => setIsSheetOpen(true)}>
+                        <PlusCircle className="mr-2"/>
+                        Criar Primeiro Anúncio
+                    </Button>
+                </CardContent>
+            </Card>
+        ) : (
+            <div className="grid gap-x-4 gap-y-8 grid-cols-2 md:grid-cols-3">
+            {filteredListings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} onViewDetails={setSelectedListing} />
             ))}
-         </div>
-      ) : filteredListings.length === 0 ? (
-        <Card className="text-center py-20">
-            <CardHeader>
-                <CardTitle>Nenhum anúncio encontrado</CardTitle>
-                <CardDescription>
-                    {searchTerm || filterCategory !== 'all' 
-                        ? "Tente ajustar seus filtros ou busca."
-                        : "Ainda não há produtos à venda. Que tal criar o primeiro anúncio?"
-                    }
-                </CardDescription>
-            </CardHeader>
-             <CardContent>
-                <Button onClick={() => setIsSheetOpen(true)}>
-                    <PlusCircle className="mr-2"/>
-                    Criar Primeiro Anúncio
-                </Button>
-            </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-x-4 gap-y-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredListings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onViewDetails={setSelectedListing} />
-          ))}
-        </div>
-      )}
+            </div>
+        )}
+    </div>
 
-      {selectedListing && (
-        <Dialog open={!!selectedListing} onOpenChange={(open) => !open && setSelectedListing(null)}>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl">{selectedListing.title}</DialogTitle>
-                </DialogHeader>
-                <div className="grid md:grid-cols-2 gap-6 py-4">
-                    <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
-                        <Image 
-                            src={selectedListing.imageUrl || 'https://placehold.co/600x600.png'}
-                            alt={selectedListing.title}
-                            fill
-                            className="object-cover"
-                        />
+
+    {selectedListing && (
+    <Dialog open={!!selectedListing} onOpenChange={(open) => !open && setSelectedListing(null)}>
+        <DialogContent className="sm:max-w-3xl">
+            <DialogHeader>
+                <DialogTitle className="text-2xl">{selectedListing.title}</DialogTitle>
+            </DialogHeader>
+            <div className="grid md:grid-cols-2 gap-6 py-4">
+                <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+                    <Image 
+                        src={selectedListing.imageUrl || 'https://placehold.co/600x600.png'}
+                        alt={selectedListing.title}
+                        fill
+                        className="object-cover"
+                    />
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-3xl font-bold text-primary">{formattedPrice(selectedListing.price)}</p>
                     </div>
-                    <div className="space-y-4">
-                        <div>
-                            <p className="text-3xl font-bold text-primary">{formattedPrice(selectedListing.price)}</p>
-                        </div>
-                        <Separator />
-                        <div className="space-y-2">
-                            <h3 className="font-semibold">Detalhes</h3>
-                            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-2">
-                                <div className="flex items-center gap-2">
-                                    <Tag className="h-4 w-4" />
-                                    <span>{selectedListing.category}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{selectedListing.location}</span>
-                                </div>
-                                 <div className="flex items-center gap-2 col-span-2">
-                                    <User className="h-4 w-4" />
-                                    <span>Vendido por: {selectedListing.authorName}</span>
-                                </div>
+                    <Separator />
+                    <div className="space-y-2">
+                        <h3 className="font-semibold">Detalhes</h3>
+                        <div className="text-sm text-muted-foreground grid grid-cols-2 gap-2">
+                            <div className="flex items-center gap-2">
+                                <Tag className="h-4 w-4" />
+                                <span>{selectedListing.category}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4" />
+                                <span>{selectedListing.location}</span>
+                            </div>
+                                <div className="flex items-center gap-2 col-span-2">
+                                <User className="h-4 w-4" />
+                                <span>Vendido por: {selectedListing.authorName}</span>
                             </div>
                         </div>
-                        <Separator />
-                        <div className="space-y-2">
-                            <h3 className="font-semibold">Descrição</h3>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                {selectedListing.description || "Nenhuma descrição fornecida."}
-                            </p>
-                        </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                        <h3 className="font-semibold">Descrição</h3>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {selectedListing.description || "Nenhuma descrição fornecida."}
+                        </p>
                     </div>
                 </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setSelectedListing(null)}>Fechar</Button>
-                    <Button onClick={() => {
-                        setSelectedListing(null);
-                        router.push('/chat');
-                        toast({ title: "Inicie uma conversa com o vendedor!"});
-                    }}>
-                        <MessageSquare className="mr-2" />
-                        Entrar em contato
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-      )}
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedListing(null)}>Fechar</Button>
+                <Button onClick={() => {
+                    setSelectedListing(null);
+                    router.push('/chat');
+                    toast({ title: "Inicie uma conversa com o vendedor!"});
+                }}>
+                    <MessageSquare className="mr-2" />
+                    Entrar em contato
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    )}
     </>
   );
 }
