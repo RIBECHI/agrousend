@@ -96,16 +96,35 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             if (plots && plots.length > 0) {
                 plots.forEach(plot => {
                     if (plot.geoJson) {
-                       let feature = plot.geoJson;
-                       // Check if it's a full Feature object. If not, assume it's just the geometry and wrap it.
-                       if (feature.type !== 'Feature') {
-                         feature = {
-                           type: 'Feature',
-                           properties: {},
-                           geometry: feature.geometry ? feature.geometry : feature // Handle both old and very old formats
-                         };
+                       let feature;
+                       // Handle different saved formats for backward compatibility
+                       if (plot.geoJson.type === 'Feature') {
+                           // It's already a valid Feature object
+                           feature = plot.geoJson;
+                       } else if (plot.geoJson.geometry) {
+                           // It's likely an old format that wrapped the geometry
+                           feature = {
+                               type: 'Feature',
+                               properties: {},
+                               geometry: plot.geoJson.geometry
+                           };
+                       } else if (plot.geoJson.type && plot.geoJson.coordinates) {
+                            // It's likely just a geometry object
+                            feature = {
+                                type: 'Feature',
+                                properties: {},
+                                geometry: plot.geoJson
+                            };
+                       } else {
+                            console.warn("Skipping invalid geoJson for plot:", plot.id, plot.geoJson);
+                            return; // Skip this plot as its geoJson is invalid
                        }
-                       L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
+
+                       try {
+                            L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
+                       } catch (e) {
+                            console.error("Failed to add GeoJSON layer for plot:", plot.id, e, feature);
+                       }
                     }
                 });
                 
