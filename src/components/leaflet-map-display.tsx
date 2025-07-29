@@ -96,13 +96,13 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             if (plots && plots.length > 0) {
                 plots.forEach(plot => {
                     if (plot.geoJson) {
-                       // FIX: Ensure data is a valid GeoJSON Feature object before rendering
                        let feature = plot.geoJson;
+                       // Check if it's a full Feature object. If not, assume it's just the geometry and wrap it.
                        if (feature.type !== 'Feature') {
                          feature = {
                            type: 'Feature',
                            properties: {},
-                           geometry: feature
+                           geometry: feature.geometry ? feature.geometry : feature // Handle both old and very old formats
                          };
                        }
                        L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
@@ -118,7 +118,7 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                  map.setView([-15.7942, -47.8825], 4);
             }
         }
-    }, [plots]); // This effect re-runs whenever the plots array changes
+    }, [plots]);
 
 
   return (

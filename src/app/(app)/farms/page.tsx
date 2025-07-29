@@ -117,7 +117,7 @@ export default function FarmsPage() {
             name,
             culture,
             area,
-            geoJson,
+            geoJson: geoJson, // Save the full GeoJSON Feature object
             createdAt: serverTimestamp(),
         };
 
