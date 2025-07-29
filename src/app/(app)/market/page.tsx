@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon, User, MessageSquare, ArrowLeft, Bell } from 'lucide-react';
+import { Loader, PlusCircle, Search, Tag, DollarSign, MapPin, Image as ImageIcon, User, MessageSquare, ArrowLeft, Bell, Share2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -151,6 +151,42 @@ export default function MarketPage() {
         setImageFile(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
+    }
+  };
+
+  const handleShare = async (listing: Listing) => {
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: listing.title,
+                text: `Confira este item no AgroUs: ${listing.title}`,
+                url: window.location.href, // Shares the current page URL
+            });
+            toast({ title: 'Anúncio compartilhado com sucesso!' });
+        } catch (error) {
+            console.error('Erro ao compartilhar:', error);
+            // Não mostra erro se o usuário cancelar o compartilhamento
+            if ((error as DOMException).name !== 'AbortError') {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Erro ao compartilhar',
+                    description: 'Não foi possível compartilhar o anúncio.',
+                });
+            }
+        }
+    } else {
+        // Fallback for browsers that do not support the Web Share API
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            toast({ title: 'Link copiado para a área de transferência!' });
+        } catch (err) {
+            console.error('Falha ao copiar o link:', err);
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível copiar o link.',
+            });
+        }
     }
   };
 
@@ -410,8 +446,11 @@ export default function MarketPage() {
                     </div>
                 </div>
             </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setSelectedListing(null)}>Fechar</Button>
+            <DialogFooter className="sm:justify-start gap-2">
+                <Button variant="outline" onClick={() => handleShare(selectedListing)}>
+                    <Share2 className="mr-2" />
+                    Compartilhar
+                </Button>
                 <Button onClick={() => {
                     setSelectedListing(null);
                     router.push('/chat');
