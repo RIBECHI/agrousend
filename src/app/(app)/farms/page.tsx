@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, MapPin } from 'lucide-react';
+import { Loader, PlusCircle, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import MapWithDraw from '@/components/map-with-draw';
-import Image from 'next/image';
+import GoogleMapDraw from '@/components/google-map-draw';
+import GoogleMapDisplay from '@/components/google-map-display';
 
 
 interface FarmPlot {
@@ -207,7 +207,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <MapWithDraw onDrawComplete={handleDrawComplete} />
+                   <GoogleMapDraw onDrawComplete={handleDrawComplete} />
                 </div>
               </div>
               <SheetFooter>
@@ -251,7 +251,7 @@ export default function FarmsPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                  <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative bg-muted">
-                    <MapWithDraw plots={[plot]} readOnly />
+                    <GoogleMapDisplay plots={[plot]} />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
