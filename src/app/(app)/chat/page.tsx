@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, User, Users, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 interface UserProfile {
   uid: string;
@@ -152,13 +153,15 @@ export default function ChatPage() {
         {selectedUser ? (
           <Card className="flex-1 flex flex-col ml-4">
             <CardHeader className="border-b">
-              <div className="flex items-center gap-4">
-                 <Avatar>
-                    <AvatarImage src={selectedUser.photoURL || undefined} alt={selectedUser.displayName} />
-                    <AvatarFallback>{selectedUser.displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                 </Avatar>
-                 <h2 className="text-xl font-bold">{selectedUser.displayName}</h2>
-              </div>
+              <Link href={`/profile/${selectedUser.uid}`} className="inline-block hover:opacity-80 transition-opacity">
+                <div className="flex items-center gap-4">
+                  <Avatar>
+                      <AvatarImage src={selectedUser.photoURL || undefined} alt={selectedUser.displayName} />
+                      <AvatarFallback>{selectedUser.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <h2 className="text-xl font-bold">{selectedUser.displayName}</h2>
+                </div>
+              </Link>
             </CardHeader>
             <CardContent className="flex-1 p-0">
                 <ScrollArea className="h-[calc(100vh-19rem)] p-4">
