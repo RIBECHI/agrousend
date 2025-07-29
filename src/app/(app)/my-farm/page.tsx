@@ -7,7 +7,7 @@ import { firestore } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Loader, MapPin } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import GoogleMapComponent, { FarmPlot } from '@/components/google-map-component';
+import GoogleMapDisplay, { FarmPlot } from '@/components/google-map-display';
 
 export default function MyFarmPage() {
   const { user } = useAuth();
@@ -60,7 +60,7 @@ export default function MyFarmPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)] w-full">
-        <GoogleMapComponent plots={plots} />
+        <GoogleMapDisplay plots={plots} />
     </div>
   );
 }

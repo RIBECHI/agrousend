@@ -12,7 +12,7 @@ export interface FarmPlot {
   geoJson: any; // GeoJSON geometry
 }
 
-interface GoogleMapComponentProps {
+interface GoogleMapDisplayProps {
     plots: FarmPlot[];
 }
 
@@ -27,7 +27,7 @@ const defaultCenter = {
   lng: -47.8825,
 };
 
-function GoogleMapComponent({ plots }: GoogleMapComponentProps) {
+function GoogleMapDisplay({ plots }: GoogleMapDisplayProps) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -122,4 +122,4 @@ function GoogleMapComponent({ plots }: GoogleMapComponentProps) {
   ) : <></>;
 }
 
-export default React.memo(GoogleMapComponent);
+export default React.memo(GoogleMapDisplay);
