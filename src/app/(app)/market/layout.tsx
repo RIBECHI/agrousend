@@ -24,9 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Loader, Image as ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
+import { brazilianStates } from '@/lib/brazilian-locations';
 
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
@@ -51,16 +52,29 @@ const CreateListingSheet = () => {
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     
-    // Form state for multiple images
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
-    const [location, setLocation] = useState('');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const MAX_IMAGES = 5;
+
+    // Location state
+    const [selectedState, setSelectedState] = useState('');
+    const [selectedCity, setSelectedCity] = useState('');
+    const [cities, setCities] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (selectedState) {
+            const stateData = brazilianStates.find(s => s.sigla === selectedState);
+            setCities(stateData ? stateData.cidades : []);
+            setSelectedCity(''); // Reset city when state changes
+        } else {
+            setCities([]);
+        }
+    }, [selectedState]);
 
     const removeImage = useCallback((index: number) => {
         setImageFiles(prev => prev.filter((_, i) => i !== index));
@@ -72,7 +86,9 @@ const CreateListingSheet = () => {
         setDescription('');
         setPrice('');
         setCategory('');
-        setLocation('');
+        setSelectedState('');
+        setSelectedCity('');
+        setCities([]);
         setImageFiles([]);
         setImagePreviews([]);
         setIsSubmitting(false);
@@ -102,7 +118,7 @@ const CreateListingSheet = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !title || !price || !category || !location || imageFiles.length === 0) {
+        if (!user || !title || !price || !category || !selectedState || !selectedCity || imageFiles.length === 0) {
             toast({
                 variant: "destructive",
                 title: "Campos obrigatórios",
@@ -124,7 +140,7 @@ const CreateListingSheet = () => {
                 description,
                 price: parseFloat(price),
                 category,
-                location,
+                location: `${selectedCity}, ${selectedState}`,
                 createdAt: serverTimestamp(),
                 imageUrls,
             };
@@ -227,9 +243,29 @@ const CreateListingSheet = () => {
                             </Select>
                         </div>
                     </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="location">Localização</Label>
-                        <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} required placeholder="Ex: Rondonópolis, MT" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="state">Estado</Label>
+                            <Select value={selectedState} onValueChange={setSelectedState} required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {brazilianStates.map(s => <SelectItem key={s.sigla} value={s.sigla}>{s.nome}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-1">
+                            <Label htmlFor="city">Cidade</Label>
+                            <Select value={selectedCity} onValueChange={setSelectedCity} required disabled={!selectedState}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="description">Descrição</Label>
@@ -292,3 +328,5 @@ export default function MarketLayout({
     </div>
   );
 }
+
+    
