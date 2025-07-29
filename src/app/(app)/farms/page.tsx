@@ -32,7 +32,7 @@ interface FarmPlot {
   name: string;
   description: string;
   area: number;
-  geoJson: any;
+  geoJson: any; // Can be a string from Firestore or an object
   culture?: string;
   userId: string;
 }
@@ -78,7 +78,14 @@ export default function FarmsPage() {
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedPlots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FarmPlot));
+      const fetchedPlots = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          id: doc.id,
+          ...data,
+          geoJson: typeof data.geoJson === 'string' ? JSON.parse(data.geoJson) : data.geoJson 
+        } as FarmPlot
+      });
       setPlots(fetchedPlots);
       setIsLoading(false);
     }, (error) => {
@@ -123,7 +130,7 @@ export default function FarmsPage() {
         description,
         culture,
         area,
-        geoJson,
+        geoJson: JSON.stringify(geoJson),
         createdAt: new Date(),
       });
 
@@ -308,4 +315,3 @@ export default function FarmsPage() {
     </>
   );
 }
-
