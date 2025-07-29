@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
@@ -23,8 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import GoogleMapDraw from '@/components/google-map-draw';
-import GoogleMapDisplay from '@/components/google-map-display';
 
 
 interface FarmPlot {
@@ -36,6 +35,10 @@ interface FarmPlot {
   culture?: string;
   userId: string;
 }
+
+const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { 
+    ssr: false 
+});
 
 
 export default function FarmsPage() {
@@ -207,7 +210,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <GoogleMapDraw onDrawComplete={handleDrawComplete} />
+                   <LeafletMap onDrawComplete={handleDrawComplete} mode="draw" />
                 </div>
               </div>
               <SheetFooter>
@@ -251,7 +254,7 @@ export default function FarmsPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                  <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative bg-muted">
-                    <GoogleMapDisplay plots={[plot]} />
+                    <LeafletMap plots={[plot]} mode="display" />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
