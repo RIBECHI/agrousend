@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare, User, Copy } from 'lucide-react';
+import { Loader, Search as SearchIcon, X, SlidersHorizontal, MapPin, Tag, MessageSquare, User, Copy, Share2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -112,10 +112,11 @@ export default function MarketSearchPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleCopyLink = async () => {
+  const handleCopyLink = async (listingId: string) => {
     try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast({ title: 'Link copiado para a área de transferência!' });
+        const link = `${window.location.origin}/market/listing/${listingId}`;
+        await navigator.clipboard.writeText(link);
+        toast({ title: 'Link do anúncio copiado!' });
     } catch (err) {
         console.error('Falha ao copiar o link:', err);
         toast({
@@ -292,8 +293,8 @@ export default function MarketSearchPage() {
                 </div>
             </div>
             <DialogFooter className="sm:justify-start gap-2">
-                 <Button variant="outline" onClick={handleCopyLink}>
-                    <Copy className="mr-2" />
+                 <Button variant="outline" onClick={() => handleCopyLink(selectedListing.id)}>
+                    <Copy className="mr-2 h-4 w-4" />
                     Copiar Link
                 </Button>
                 <Button onClick={() => {
@@ -311,3 +312,5 @@ export default function MarketSearchPage() {
     </>
   );
 }
+
+    
