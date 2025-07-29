@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Leaf } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ImageTilt from '@/components/image-tilt';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -72,42 +73,48 @@ export default function LoginPage() {
   )
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-secondary">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="text-center">
-           <div className="flex justify-center items-center mb-4">
-              <Leaf className="h-10 w-10 text-primary" />
-              <span className="ml-2 text-3xl font-bold text-primary">AgroUs</span>
-            </div>
-          <CardTitle className="text-2xl">Acesse sua conta</CardTitle>
-          <CardDescription>Bem-vindo de volta! Entre com suas credenciais.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Tabs defaultValue="producer" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="producer">Produtor</TabsTrigger>
-                    <TabsTrigger value="supplier">Fornecedor</TabsTrigger>
-                    <TabsTrigger value="service">Serviços</TabsTrigger>
-                </TabsList>
-                <TabsContent value="producer" className="pt-4">
-                    {LoginForm}
-                </TabsContent>
-                <TabsContent value="supplier" className="pt-4">
-                    {LoginForm}
-                </TabsContent>
-                <TabsContent value="service" className="pt-4">
-                    {LoginForm}
-                </TabsContent>
-            </Tabs>
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <div className="hidden lg:flex lg:items-center lg:justify-center bg-muted">
+         <ImageTilt imageUrl="https://placehold.co/1200x1200.png" data-ai-hint="soybean field" />
+      </div>
+      <div className="flex items-center justify-center py-12 min-h-screen">
+          <Card className="w-full max-w-md mx-4 border-none shadow-none">
+            <CardHeader className="text-center">
+               <div className="flex justify-center items-center mb-4">
+                  <Leaf className="h-10 w-10 text-primary" />
+                  <span className="ml-2 text-3xl font-bold text-primary">AgroUs</span>
+                </div>
+              <CardTitle className="text-2xl">Acesse sua conta</CardTitle>
+              <CardDescription>Bem-vindo de volta! Entre com suas credenciais.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Tabs defaultValue="producer" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="producer">Produtor</TabsTrigger>
+                        <TabsTrigger value="supplier">Fornecedor</TabsTrigger>
+                        <TabsTrigger value="service">Serviços</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="producer" className="pt-4">
+                        {LoginForm}
+                    </TabsContent>
+                    <TabsContent value="supplier" className="pt-4">
+                        {LoginForm}
+                    </TabsContent>
+                    <TabsContent value="service" className="pt-4">
+                        {LoginForm}
+                    </TabsContent>
+                </Tabs>
 
-           <div className="mt-4 text-center text-sm">
-            Não tem uma conta?{' '}
-            <Link href="/signup" className="underline">
-              Cadastre-se
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+               <div className="mt-4 text-center text-sm">
+                Não tem uma conta?{' '}
+                <Link href="/signup" className="underline">
+                  Cadastre-se
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+      </div>
     </div>
   );
 }
+
