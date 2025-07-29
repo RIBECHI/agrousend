@@ -25,7 +25,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useState, useCallback } from 'react';
-import { Loader, Image as ImageIcon } from 'lucide-react';
+import { Loader, Image as ImageIcon, X } from 'lucide-react';
 import Image from 'next/image';
 
 
@@ -51,23 +51,21 @@ const CreateListingSheet = () => {
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     
-    // Form state
+    // Form state for multiple images
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
     const [location, setLocation] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFiles, setImageFiles] = useState<File[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const MAX_IMAGES = 5;
 
-    const removeImage = useCallback(() => {
-        setImageFile(null);
-        if (imagePreview) {
-            URL.revokeObjectURL(imagePreview);
-        }
-        setImagePreview(null);
-    }, [imagePreview]);
+    const removeImage = useCallback((index: number) => {
+        setImageFiles(prev => prev.filter((_, i) => i !== index));
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    }, []);
 
     const resetForm = useCallback(() => {
         setTitle('');
@@ -75,41 +73,51 @@ const CreateListingSheet = () => {
         setPrice('');
         setCategory('');
         setLocation('');
-        removeImage();
+        setImageFiles([]);
+        setImagePreviews([]);
         setIsSubmitting(false);
-    }, [removeImage]);
+    }, []);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            const totalImages = imageFiles.length + files.length;
+
+            if (totalImages > MAX_IMAGES) {
                 toast({
                     variant: "destructive",
-                    title: "Imagem muito grande",
-                    description: "Por favor, selecione uma imagem com menos de 2MB.",
+                    title: `Limite de ${MAX_IMAGES} imagens excedido`,
+                    description: `Você só pode enviar até ${MAX_IMAGES} imagens por anúncio.`,
                 });
                 return;
             }
-            setImageFile(file);
-            const previewUrl = URL.createObjectURL(file);
-            setImagePreview(previewUrl);
+
+            const newFiles = [...imageFiles, ...files];
+            setImageFiles(newFiles);
+
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            setImagePreviews(prev => [...prev, ...newPreviews]);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !title || !price || !category || !location || !imageFile) {
+        if (!user || !title || !price || !category || !location || imageFiles.length === 0) {
             toast({
                 variant: "destructive",
                 title: "Campos obrigatórios",
-                description: "Todos os campos, incluindo a imagem, são obrigatórios.",
+                description: "Todos os campos e pelo menos uma imagem são obrigatórios.",
             });
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const listingData: any = {
+            const imageUrls = await Promise.all(
+                imageFiles.map(file => toBase64(file))
+            );
+
+            const listingData = {
                 userId: user.uid,
                 authorName: user.displayName,
                 title,
@@ -118,7 +126,7 @@ const CreateListingSheet = () => {
                 category,
                 location,
                 createdAt: serverTimestamp(),
-                imageUrl: await toBase64(imageFile),
+                imageUrls,
             };
 
             await addDoc(collection(firestore, 'listings'), listingData);
@@ -168,28 +176,35 @@ const CreateListingSheet = () => {
                     </SheetDescription>
                 </SheetHeader>
                 <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
-                    <div className="space-y-1">
-                        <Label>Imagem do Anúncio</Label>
-                        {imagePreview ? (
-                            <div className="relative">
-                                <Image src={imagePreview} alt="Preview do anúncio" width={200} height={200} className="rounded-md object-cover w-full aspect-square" />
-                                <Button variant="destructive" size="sm" onClick={removeImage} className="absolute top-2 right-2">Remover</Button>
-                            </div>
-                        ) : (
-                            <div className="flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 dark:border-gray-100/25">
-                                <div className="text-center">
-                                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                    <div className="mt-4 flex text-sm leading-6 text-gray-600">
-                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary-dark dark:bg-transparent">
-                                        <span>Selecione uma imagem</span>
-                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" required/>
-                                    </label>
-                                    <p className="pl-1 dark:text-gray-400">ou arraste e solte</p>
-                                    </div>
-                                    <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 2MB</p>
+                    <div className="space-y-2">
+                        <Label>Imagens do Anúncio (até {MAX_IMAGES})</Label>
+                         <div className="grid grid-cols-3 gap-2">
+                            {imagePreviews.map((src, index) => (
+                                <div key={index} className="relative aspect-square">
+                                    <Image src={src} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-1 right-1 h-6 w-6"
+                                        onClick={() => removeImage(index)}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            </div>
-                        )}
+                            ))}
+                             {imageFiles.length < MAX_IMAGES && (
+                                <div className="flex items-center justify-center aspect-square rounded-lg border border-dashed border-gray-900/25 dark:border-gray-100/25">
+                                    <label htmlFor="file-upload" className="flex flex-col items-center justify-center text-center cursor-pointer text-gray-600 hover:text-primary">
+                                        <ImageIcon className="h-8 w-8 text-gray-400" />
+                                        <span className="mt-2 text-sm">Adicionar</span>
+                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" multiple/>
+                                    </label>
+                                </div>
+                             )}
+                        </div>
+                        <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 2MB cada.</p>
+
                     </div>
                     <div className="space-y-1">
                         <Label htmlFor="title">Título</Label>
@@ -277,4 +292,3 @@ export default function MarketLayout({
     </div>
   );
 }
-

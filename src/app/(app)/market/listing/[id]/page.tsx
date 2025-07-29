@@ -7,13 +7,13 @@ import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 interface Listing {
   id: string;
@@ -24,7 +24,7 @@ interface Listing {
   price: number;
   category: string;
   location: string;
-  imageUrl?: string;
+  imageUrls: string[];
   createdAt: any;
 }
 
@@ -130,14 +130,42 @@ export default function ListingDetailPage() {
 
         <main className="p-4 md:p-8 max-w-6xl mx-auto">
              <div className="grid md:grid-cols-2 gap-8">
-                <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
-                    <Image 
-                        src={listing.imageUrl || 'https://placehold.co/600x600.png'}
-                        alt={listing.title}
-                        fill
-                        className="object-cover"
-                    />
-                </div>
+                <Carousel className="w-full">
+                    <CarouselContent>
+                        {(listing.imageUrls && listing.imageUrls.length > 0) ? (
+                            listing.imageUrls.map((url, index) => (
+                                <CarouselItem key={index}>
+                                    <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+                                        <Image
+                                            src={url}
+                                            alt={`${listing.title} - imagem ${index + 1}`}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                </CarouselItem>
+                            ))
+                        ) : (
+                            <CarouselItem>
+                                <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
+                                    <Image
+                                        src={'https://placehold.co/600x600.png'}
+                                        alt={listing.title}
+                                        fill
+                                        className="object-cover"
+                                    />
+                                </div>
+                            </CarouselItem>
+                        )}
+                    </CarouselContent>
+                    {(listing.imageUrls && listing.imageUrls.length > 1) && (
+                        <>
+                            <CarouselPrevious className="absolute left-2" />
+                            <CarouselNext className="absolute right-2" />
+                        </>
+                    )}
+                </Carousel>
+
                 <div className="space-y-4">
                     <h1 className="text-3xl font-bold">{listing.title}</h1>
                     
@@ -193,6 +221,3 @@ export default function ListingDetailPage() {
     </div>
   );
 }
-
-
-    

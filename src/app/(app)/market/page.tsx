@@ -27,7 +27,7 @@ interface Listing {
   price: number;
   category: string;
   location: string;
-  imageUrl?: string;
+  imageUrls: string[];
   createdAt: any;
 }
 
@@ -42,7 +42,7 @@ const ListingCard = ({ listing, onViewDetails }: { listing: Listing, onViewDetai
             <CardContent className="p-0">
                 <div className="relative aspect-square bg-muted">
                      <Image 
-                        src={listing.imageUrl || 'https://placehold.co/400x400.png'} 
+                        src={(listing.imageUrls && listing.imageUrls[0]) || 'https://placehold.co/400x400.png'}
                         alt={listing.title}
                         fill
                         className="object-cover"
@@ -103,7 +103,6 @@ export default function MarketPage() {
         await navigator.clipboard.writeText(link);
         toast({ title: 'Link do anúncio copiado!' });
     } catch (err) {
-        console.error('Falha ao copiar o link:', err);
         toast({
             variant: 'destructive',
             title: 'Erro',
@@ -199,7 +198,7 @@ export default function MarketPage() {
             <div className="grid md:grid-cols-2 gap-6 py-4">
                 <div className="relative aspect-square bg-muted rounded-lg overflow-hidden">
                     <Image 
-                        src={selectedListing.imageUrl || 'https://placehold.co/600x600.png'}
+                        src={(selectedListing.imageUrls && selectedListing.imageUrls[0]) || 'https://placehold.co/600x600.png'}
                         alt={selectedListing.title}
                         fill
                         className="object-cover"
@@ -256,5 +255,3 @@ export default function MarketPage() {
     </>
   );
 }
-
-    
