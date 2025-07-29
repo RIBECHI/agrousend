@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, orderBy, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ interface Listing {
   category: string;
   location: string;
   imageUrls: string[];
-  createdAt: any;
+  createdAt: Timestamp;
   status?: 'active' | 'sold';
 }
 
@@ -61,18 +61,28 @@ export default function SellingPage() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        setIsLoading(false);
+        return;
+    };
 
     const listingsCollection = collection(firestore, 'listings');
     const q = query(
       listingsCollection, 
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', user.uid)
     );
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedListings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+      
+      // Sort on the client side to avoid composite index
+      fetchedListings.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
       setListings(fetchedListings);
       setIsLoading(false);
     }, (error) => {
@@ -248,4 +258,3 @@ export default function SellingPage() {
     </>
   );
 }
-
