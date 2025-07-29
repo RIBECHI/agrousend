@@ -156,7 +156,7 @@ export default function ItemsPage() {
 
     setIsSubmitting(true);
     
-    const itemData: Omit<CatalogItem, 'id' | 'userId'> = {
+    const itemData: Omit<CatalogItem, 'id' | 'userId'> & { userId?: string, createdAt?: any } = {
         name,
         category,
         description,
@@ -181,12 +181,9 @@ export default function ItemsPage() {
 
       } else {
         // Create new item
-        const newItem = {
-          ...itemData,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        };
-        await addDoc(collection(firestore, 'items'), newItem);
+        itemData.userId = user.uid;
+        itemData.createdAt = serverTimestamp();
+        await addDoc(collection(firestore, 'items'), itemData);
         toast({
           title: "Sucesso!",
           description: "Item cadastrado com sucesso.",
@@ -270,7 +267,7 @@ export default function ItemsPage() {
                   </div>
                    <div>
                     <Label htmlFor="category">Categoria</Label>
-                    <Select value={category} onValueChange={setCategory}>
+                    <Select value={category} onValueChange={setCategory} required>
                         <SelectTrigger id="category">
                             <SelectValue placeholder="Selecione uma categoria" />
                         </SelectTrigger>
