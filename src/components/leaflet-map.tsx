@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef, useEffect } from 'react';
@@ -30,11 +31,23 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
         zoomControl: true,
       });
       mapInstanceRef.current = map;
-
-      L.tileLayer(
+      
+      const satelliteLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         { attribution: 'Tiles &copy; Esri' }
       ).addTo(map);
+
+      const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      });
+
+      const baseMaps = {
+          "Satélite": satelliteLayer,
+          "Ruas": streetLayer
+      };
+
+      L.control.layers(baseMaps).addTo(map);
+
 
       const drawnItems = new L.FeatureGroup();
       map.addLayer(drawnItems);
@@ -62,6 +75,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
 
       map.on(L.Draw.Event.CREATED, (event: any) => {
         const layer = event.layer;
+        drawnItems.clearLayers(); // Limpa desenhos anteriores
         drawnItems.addLayer(layer);
 
         const geoJson = layer.toGeoJSON();
@@ -69,6 +83,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete }) => {
         const areaInHectares = areaInMeters / 10000;
         onDrawComplete(areaInHectares, geoJson.geometry);
       });
+
        map.on(L.Draw.Event.DELETED, () => {
         // Quando uma forma é excluída, limpa os dados
         onDrawComplete(0, null);

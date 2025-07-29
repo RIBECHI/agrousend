@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useRef } from 'react';
@@ -40,14 +41,24 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots }) => {
             const map = L.map(mapContainerRef.current, {
                 center: [-15.7942, -47.8825],
                 zoom: 4,
-                scrollWheelZoom: false,
-                zoomControl: false,
+                zoomControl: true, // Habilitado por padrão, mas bom ser explícito
             });
             mapInstanceRef.current = map;
 
-             L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            const satelliteLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
                 attribution: 'Tiles &copy; Esri',
             }).addTo(map);
+
+            const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+
+            const baseMaps = {
+                "Satélite": satelliteLayer,
+                "Ruas": streetLayer
+            };
+
+            L.control.layers(baseMaps).addTo(map);
 
             if (plots && plots.length > 0) {
                  const featureGroup = L.featureGroup();
