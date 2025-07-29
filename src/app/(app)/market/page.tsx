@@ -13,6 +13,7 @@ import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ListingCard } from '@/components/market/listing-card';
 
 interface Listing {
   id: string;
@@ -25,34 +26,6 @@ interface Listing {
   location: string;
   imageUrls: string[];
   createdAt: any;
-}
-
-const ListingCard = ({ listing, onViewDetails }: { listing: Listing, onViewDetails: (listing: Listing) => void }) => {
-    const formattedPrice = new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(listing.price);
-
-    return (
-        <Card className="overflow-hidden flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200" onClick={() => onViewDetails(listing)}>
-            <CardContent className="p-0">
-                <div className="relative aspect-square bg-muted">
-                     <Image 
-                        src={(listing.imageUrls && listing.imageUrls[0]) || 'https://placehold.co/400x400.png'}
-                        alt={listing.title}
-                        fill
-                        className="object-cover"
-                        data-ai-hint="farm product"
-                    />
-                </div>
-                <div className="p-4 space-y-2">
-                    <p className="text-lg font-bold">{formattedPrice}</p>
-                    <p className="font-semibold leading-tight">{listing.title}</p>
-                    <p className="text-sm text-muted-foreground">{listing.location}</p>
-                </div>
-            </CardContent>
-        </Card>
-    )
 }
 
 export default function MarketPage() {
@@ -82,10 +55,6 @@ export default function MarketPage() {
 
     return () => unsubscribe();
   }, [toast]);
-
-  const handleListingClick = (listing: Listing) => {
-    router.push(`/market/listing/${listing.id}`);
-  };
 
   return (
     <>
@@ -134,7 +103,7 @@ export default function MarketPage() {
         ) : (
             <div className="grid gap-x-4 gap-y-8 grid-cols-2 md:grid-cols-4">
             {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} onViewDetails={handleListingClick} />
+                <ListingCard key={listing.id} listing={listing} />
             ))}
             </div>
         )}
