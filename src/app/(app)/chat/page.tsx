@@ -153,13 +153,16 @@ export default function ChatPage() {
         {selectedUser ? (
           <Card className="flex-1 flex flex-col ml-4">
             <CardHeader className="border-b">
-              <Link href={`/profile/${selectedUser.uid}`} className="inline-block hover:opacity-80 transition-opacity">
+              <Link href={`/profile/${selectedUser.uid}`} className="group inline-block transition-opacity">
                 <div className="flex items-center gap-4">
                   <Avatar>
                       <AvatarImage src={selectedUser.photoURL || undefined} alt={selectedUser.displayName} />
                       <AvatarFallback>{selectedUser.displayName.charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-bold">{selectedUser.displayName}</h2>
+                  <div>
+                    <h2 className="text-xl font-bold group-hover:underline">{selectedUser.displayName}</h2>
+                    <p className="text-sm text-muted-foreground">Clique para ver o perfil</p>
+                  </div>
                 </div>
               </Link>
             </CardHeader>
