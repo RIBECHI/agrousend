@@ -124,6 +124,9 @@ export default function MarketSearchPage() {
     })
   }, [listings, searchTerm, filterCategory, filterState, filterCity]);
 
+  const handleListingClick = (listing: Listing) => {
+    router.push(`/market/listing/${listing.id}`);
+  };
 
   const SearchResults = () => {
     if (isLoading) {
@@ -157,7 +160,7 @@ export default function MarketSearchPage() {
     return (
         <div className="grid gap-x-4 gap-y-8 grid-cols-2 md:grid-cols-4">
             {filteredListings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} onViewDetails={() => router.push(`/market/listing/${listing.id}`)} />
+                <ListingCard key={listing.id} listing={listing} onViewDetails={handleListingClick} />
             ))}
         </div>
     )
