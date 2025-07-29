@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { LatLngTuple } from 'leaflet';
 import { Loader, PlusCircle, Trash2, MapPin } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,13 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-
-// TODO: Substituir pelo novo componente de mapa de desenho do Google Maps
-const MapPlaceholder = () => (
-    <div className="h-full w-full bg-muted flex items-center justify-center">
-        <p className="text-muted-foreground">O mapa de desenho será carregado aqui.</p>
-    </div>
-);
+import GoogleMapDraw from '@/components/google-map-draw';
+import GoogleMapDisplay from '@/components/google-map-display';
 
 
 interface FarmPlot {
@@ -41,8 +35,6 @@ interface FarmPlot {
   geoJson: any;
   culture?: string;
   userId: string;
-  mapCenter: LatLngTuple;
-  mapZoom: number;
 }
 
 export default function FarmsPage() {
@@ -60,9 +52,7 @@ export default function FarmsPage() {
   const [area, setArea] = useState(0);
   const [geoJson, setGeoJson] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mapCenter, setMapCenter] = useState<LatLngTuple>([-15.7942, -47.8825]); // Default to Brazil
-  const [mapZoom, setMapZoom] = useState(4);
-
+  
   const [plotToDelete, setPlotToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -97,19 +87,13 @@ export default function FarmsPage() {
     setArea(0);
     setGeoJson(null);
     setIsSubmitting(false);
-    setMapCenter([-15.7942, -47.8825]);
-    setMapZoom(4);
   }
 
-  const handleDrawComplete = (areaInHectares: number, layer: any) => {
+  const handleDrawComplete = (areaInHectares: number, geoJsonData: any) => {
     setArea(parseFloat(areaInHectares.toFixed(4)));
-    setGeoJson(layer);
+    setGeoJson(geoJsonData);
   };
 
-  const handleMapStateChange = (center: LatLngTuple, zoom: number) => {
-    setMapCenter(center);
-    setMapZoom(zoom);
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,8 +115,6 @@ export default function FarmsPage() {
         culture,
         area,
         geoJson,
-        mapCenter,
-        mapZoom,
         createdAt: new Date(),
       });
 
@@ -226,7 +208,7 @@ export default function FarmsPage() {
                   </div>
                 </div>
                 <div className="h-[400px] md:h-full w-full rounded-lg overflow-hidden border">
-                   <MapPlaceholder />
+                   <GoogleMapDraw onDrawComplete={handleDrawComplete} />
                 </div>
               </div>
               <SheetFooter>
@@ -270,7 +252,7 @@ export default function FarmsPage() {
               </CardHeader>
               <CardContent className="flex-grow">
                  <div className="h-48 w-full rounded-lg overflow-hidden border mb-4">
-                     <MapPlaceholder />
+                     <GoogleMapDisplay plots={[plot]} />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
