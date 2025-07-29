@@ -75,7 +75,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
         edit: {
             featureGroup: drawnItems,
             remove: true,
-            edit: false,
+            edit: false, // Desabilitando a edição automática
         },
       });
       map.addControl(drawControl);
