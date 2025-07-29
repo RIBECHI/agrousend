@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import GoogleMapDraw from '@/components/google-map-draw';
-import GoogleMapDisplay from '@/components/google-map-display';
+import Image from 'next/image';
 
 
 interface FarmPlot {
@@ -36,6 +36,17 @@ interface FarmPlot {
   culture?: string;
   userId: string;
 }
+
+const getStaticMapUrl = (geoJson: any) => {
+    if (!geoJson || !geoJson.coordinates || !geoJson.coordinates[0]) {
+        return 'https://placehold.co/600x400.png';
+    }
+    const path = geoJson.coordinates[0].map((coord: number[]) => `${coord[1]},${coord[0]}`).join('|');
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    // Note: Static Maps API has limitations on URL length. This may fail for very complex polygons.
+    return `https://maps.googleapis.com/maps/api/staticmap?size=400x300&maptype=satellite&path=color:0x69B166ff|weight:2|fillcolor:0x69B16660|${path}&key=${apiKey}`;
+}
+
 
 export default function FarmsPage() {
   const { user } = useAuth();
@@ -251,8 +262,14 @@ export default function FarmsPage() {
                 <CardDescription>{plot.culture || 'Cultura não definida'}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow">
-                 <div className="h-48 w-full rounded-lg overflow-hidden border mb-4">
-                     <GoogleMapDisplay plots={[plot]} />
+                 <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative">
+                    <Image 
+                        src={getStaticMapUrl(plot.geoJson)}
+                        alt={`Mapa do talhão ${plot.name}`}
+                        fill
+                        className="object-cover"
+                        unoptimized // Required for external URLs from Google
+                    />
                 </div>
                 <p className="text-sm text-muted-foreground">{plot.description}</p>
               </CardContent>
