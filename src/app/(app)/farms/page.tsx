@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Map } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -249,28 +249,41 @@ export default function FarmsPage() {
             </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {plots.map((plot) => (
-            <Card key={plot.id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{plot.name}</CardTitle>
-                <CardDescription>{plot.culture || 'Cultura não definida'}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                 <div className="h-48 w-full rounded-lg overflow-hidden border mb-4 relative bg-muted">
-                    <LeafletMapDisplay plots={[plot]} />
-                </div>
-                <p className="text-sm text-muted-foreground">{plot.description}</p>
-              </CardContent>
-              <CardFooter className="flex justify-between items-center">
-                <div className="font-bold text-lg">{plot.area} ha</div>
-                 <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(plot.id)}>
-                    <Trash2 className="h-5 w-5" />
-                    <span className="sr-only">Excluir</span>
-                </Button>
-              </CardFooter>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Map className="h-6 w-6" />
+                        Visão Geral dos Talhões
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="h-[400px] w-full rounded-lg overflow-hidden border relative bg-muted">
+                        <LeafletMapDisplay plots={plots} />
+                    </div>
+                </CardContent>
             </Card>
-          ))}
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {plots.map((plot) => (
+                <Card key={plot.id} className="flex flex-col">
+                <CardHeader>
+                    <CardTitle>{plot.name}</CardTitle>
+                    <CardDescription>{plot.culture || 'Cultura não definida'}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                    <p className="text-sm text-muted-foreground">{plot.description}</p>
+                </CardContent>
+                <CardFooter className="flex justify-between items-center">
+                    <div className="font-bold text-lg">{plot.area} ha</div>
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(plot.id)}>
+                        <Trash2 className="h-5 w-5" />
+                        <span className="sr-only">Excluir</span>
+                    </Button>
+                </CardFooter>
+                </Card>
+            ))}
+            </div>
         </div>
       )}
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
