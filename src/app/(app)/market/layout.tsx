@@ -4,7 +4,6 @@
 import {
   Heart,
   Home,
-  MapPin,
   MessageSquare,
   Package,
   Search,
@@ -20,7 +19,6 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/market', label: 'Início', icon: Store },
   { href: '/market/search', label: 'Buscar', icon: Search },
-  { href: '/market/categories', label: 'Categorias', icon: Tag },
   { href: '/market/selling', label: 'Vendas', icon: Package },
   { href: '/market/buying', label: 'Compras', icon: ShoppingCart },
 ];
@@ -47,7 +45,7 @@ export default function MarketLayout({
                     key={item.href}
                     href={item.href}
                     className={cn(
-                    'flex flex-col items-center justify-center text-xs gap-1 transition-colors',
+                    'flex flex-col items-center justify-center text-xs gap-1 transition-colors w-full h-full',
                     isActive
                         ? 'text-primary font-bold'
                         : 'text-muted-foreground hover:text-primary'
