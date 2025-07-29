@@ -166,7 +166,7 @@ export default function MarketPage() {
         } catch (error) {
             console.error('Erro ao compartilhar:', error);
             // Não mostra erro se o usuário cancelar o compartilhamento
-            if ((error as DOMException).name !== 'AbortError') {
+            if ((error as DOMException).name !== 'AbortError' && (error as DOMException).name !== 'NotAllowedError') {
                  toast({
                     variant: 'destructive',
                     title: 'Erro ao compartilhar',

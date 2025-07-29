@@ -123,7 +123,7 @@ export default function MarketSearchPage() {
             toast({ title: 'Anúncio compartilhado com sucesso!' });
         } catch (error) {
             console.error('Erro ao compartilhar:', error);
-             if ((error as DOMException).name !== 'AbortError') {
+             if ((error as DOMException).name !== 'AbortError' && (error as DOMException).name !== 'NotAllowedError') {
                  toast({
                     variant: 'destructive',
                     title: 'Erro ao compartilhar',
