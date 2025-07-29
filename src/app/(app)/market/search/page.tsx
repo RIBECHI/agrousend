@@ -187,7 +187,7 @@ export default function MarketSearchPage() {
              <Select value={filterDistance} onValueChange={setFilterDistance}>
                 <SelectTrigger>
                     <SelectValue placeholder="Raio" />
-                SelectTrigger>
+                </SelectTrigger>
                 <SelectContent>
                     {distances.map(dist => <SelectItem key={dist} value={dist}>{dist}</SelectItem>)}
                 </SelectContent>
@@ -257,4 +257,3 @@ export default function MarketSearchPage() {
     </>
   );
 }
-
