@@ -7,9 +7,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -29,6 +29,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 
 interface FarmPlot {
   id: string;
@@ -42,13 +44,27 @@ interface Harvest {
   name: string;
 }
 
+interface AppliedInput {
+    itemId: string;
+    itemName: string;
+    quantity: number;
+    unit: string;
+}
+
 interface Operation {
     id: string;
     type: 'Plantio' | 'Pulverização' | 'Adubação' | 'Colheita' | 'Outra';
     date: Timestamp;
     description: string;
+    inputs: AppliedInput[];
     status: 'Planejada' | 'Concluída';
     userId: string;
+}
+
+interface Item {
+  id: string;
+  name: string;
+  unit: string;
 }
 
 const operationTypes = ['Plantio', 'Pulverização', 'Adubação', 'Colheita', 'Outra'];
@@ -73,6 +89,7 @@ export default function PlotOperationsPage() {
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
   const [operations, setOperations] = useState<Operation[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Sheet state
@@ -84,6 +101,8 @@ export default function PlotOperationsPage() {
   const [opDate, setOpDate] = useState<Date | undefined>();
   const [opDescription, setOpDescription] = useState('');
   const [opStatus, setOpStatus] = useState<'Planejada' | 'Concluída'>('Planejada');
+  const [opInputs, setOpInputs] = useState<Omit<AppliedInput, 'itemName' | 'unit'>[]>([]);
+
 
   // Dialog state
   const [opToDelete, setOpToDelete] = useState<string | null>(null);
@@ -92,12 +111,11 @@ export default function PlotOperationsPage() {
   useEffect(() => {
     if (!user || !harvestId || !plotId) return;
 
-    let unsubscribeOps: () => void = () => {};
+    let unsubscribes: (() => void)[] = [];
 
     const fetchInitialDataAndSubscribe = async () => {
         setIsLoading(true);
         try {
-            // 1. Fetch Harvest data first
             const harvestDocRef = doc(firestore, 'harvests', harvestId);
             const harvestDoc = await getDoc(harvestDocRef);
 
@@ -106,7 +124,6 @@ export default function PlotOperationsPage() {
             }
             setHarvest({ id: harvestDoc.id, ...harvestDoc.data() } as Harvest);
             
-            // 2. Fetch Plot data
             const plotDocRef = doc(firestore, 'farmPlots', plotId);
             const plotDoc = await getDoc(plotDocRef);
 
@@ -115,21 +132,20 @@ export default function PlotOperationsPage() {
             }
             setPlot({ id: plotDoc.id, ...plotDoc.data() } as FarmPlot);
 
-            // 3. Listener for operations, only after we confirm access.
-            const operationsCollectionPath = `harvests/${harvestId}/harvestPlots/${plotId}/operations`;
-            const operationsCollection = collection(firestore, operationsCollectionPath);
-            // CORREÇÃO: Removido orderBy para evitar erro de índice. A ordenação será feita no cliente.
-            const q = query(operationsCollection, where('userId', '==', user.uid));
-
-            unsubscribeOps = onSnapshot(q, (snapshot) => {
+            const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`), where('userId', '==', user.uid));
+            const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
                 let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
-                // CORREÇÃO: Ordenando no lado do cliente.
                 fetchedOps.sort((a, b) => b.date.toMillis() - a.date.toMillis());
                 setOperations(fetchedOps);
-            }, (error) => {
-                console.error("Erro ao buscar operações: ", error);
-                toast({ variant: 'destructive', title: 'Erro ao carregar operações.'});
             });
+            unsubscribes.push(opsUnsubscribe);
+
+            const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid), orderBy('name', 'asc'));
+            const itemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
+                const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+                setItems(fetchedItems);
+            });
+            unsubscribes.push(itemsUnsubscribe);
 
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: err.message });
@@ -141,7 +157,7 @@ export default function PlotOperationsPage() {
 
     fetchInitialDataAndSubscribe();
     
-    return () => unsubscribeOps();
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [user, harvestId, plotId, router, toast]);
   
   const resetForm = useCallback(() => {
@@ -149,13 +165,50 @@ export default function PlotOperationsPage() {
     setOpDate(undefined);
     setOpDescription('');
     setOpStatus('Planejada');
+    setOpInputs([]);
     setIsSubmitting(false);
   }, []);
 
+  const handleAddInput = () => {
+    setOpInputs(prev => [...prev, { itemId: '', quantity: 0 }]);
+  }
+  
+  const handleRemoveInput = (index: number) => {
+    setOpInputs(prev => prev.filter((_, i) => i !== index));
+  }
+
+  const handleInputChange = (index: number, field: 'itemId' | 'quantity', value: string | number) => {
+    setOpInputs(prev => {
+        const newInputs = [...prev];
+        const currentInput = { ...newInputs[index] };
+        if (field === 'itemId') {
+            currentInput.itemId = value as string;
+        } else {
+            currentInput.quantity = Number(value);
+        }
+        newInputs[index] = currentInput;
+        return newInputs;
+    });
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !opType || !opDate || !opDescription) {
-        toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo, data e descrição são obrigatórios.'});
+    if (!user || !opType || !opDate || (opDescription.trim() === '' && opInputs.length === 0)) {
+        toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo, data e pelo menos uma descrição ou insumo são obrigatórios.'});
+        return;
+    }
+
+    const validInputs = opInputs.filter(input => input.itemId && input.quantity > 0).map(input => {
+        const itemDetails = items.find(i => i.id === input.itemId);
+        return {
+            ...input,
+            itemName: itemDetails?.name || 'Desconhecido',
+            unit: itemDetails?.unit || 'un'
+        }
+    });
+
+    if (opInputs.length > 0 && validInputs.length !== opInputs.length) {
+        toast({ variant: 'destructive', title: 'Insumos inválidos', description: 'Preencha todos os campos dos insumos adicionados.'});
         return;
     }
 
@@ -166,6 +219,7 @@ export default function PlotOperationsPage() {
             type: opType,
             date: Timestamp.fromDate(opDate),
             description: opDescription,
+            inputs: validInputs,
             status: opStatus,
             createdAt: serverTimestamp(),
         };
@@ -240,7 +294,7 @@ export default function PlotOperationsPage() {
               Adicionar Operação
             </Button>
           </SheetTrigger>
-          <SheetContent>
+          <SheetContent className="w-full sm:max-w-md">
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
                 <SheetHeader>
                     <SheetTitle>Nova Operação</SheetTitle>
@@ -278,9 +332,53 @@ export default function PlotOperationsPage() {
                             </SelectContent>
                         </Select>
                      </div>
+                      
+                      <Separator />
+
                       <div>
-                        <Label htmlFor="description">Descrição / Detalhes</Label>
-                        <Textarea id="description" value={opDescription} onChange={(e) => setOpDescription(e.target.value)} rows={4} required placeholder="Ex: Aplicação de fungicida X, dose Y..."/>
+                          <Label>Insumos Utilizados</Label>
+                          <div className="space-y-3 mt-2">
+                              {opInputs.map((input, index) => {
+                                  const selectedItem = items.find(i => i.id === input.itemId);
+                                  return (
+                                    <div key={index} className="flex items-end gap-2 p-3 border rounded-lg">
+                                        <div className="flex-1 space-y-2">
+                                            <Label htmlFor={`item-${index}`}>Item</Label>
+                                            <Select value={input.itemId} onValueChange={(value) => handleInputChange(index, 'itemId', value)}>
+                                                <SelectTrigger id={`item-${index}`}><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {items.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                         <div className="w-2/5 space-y-2">
+                                            <Label htmlFor={`qty-${index}`}>Qtd. ({selectedItem?.unit || 'un'})</Label>
+                                            <Input 
+                                                id={`qty-${index}`} 
+                                                type="number"
+                                                value={input.quantity || ''}
+                                                onChange={(e) => handleInputChange(index, 'quantity', e.target.value)}
+                                                placeholder="0.00"
+                                                min="0"
+                                            />
+                                         </div>
+                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveInput(index)}>
+                                            <MinusCircle className="h-5 w-5"/>
+                                        </Button>
+                                    </div>
+                                  )
+                              })}
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="mt-2" onClick={handleAddInput}>
+                              <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Insumo
+                          </Button>
+                      </div>
+
+                      <Separator />
+
+                      <div>
+                        <Label htmlFor="description">Observações</Label>
+                        <Textarea id="description" value={opDescription} onChange={(e) => setOpDescription(e.target.value)} rows={3} placeholder="Detalhes adicionais, condições climáticas, etc."/>
                       </div>
                 </div>
                  <SheetFooter className="pt-4 mt-auto">
@@ -303,20 +401,39 @@ export default function PlotOperationsPage() {
              ) : (
                 <ul className="divide-y">
                     {operations.map(op => (
-                        <li key={op.id} className="p-4 flex items-start justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 bg-muted rounded-full">
+                        <li key={op.id} className="p-4 flex items-start justify-between hover:bg-muted/50">
+                            <div className="flex items-start gap-4 flex-1">
+                                <div className="p-2 bg-muted rounded-full mt-1">
                                     <OperationIcon type={op.type} />
                                 </div>
-                                <div>
-                                    <p className="font-semibold">{op.type} <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${op.status === 'Concluída' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{op.status}</span></p>
-                                    <p className="text-sm text-muted-foreground">{op.description}</p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {format(op.date.toDate(), "dd 'de' MMM, yyyy", { locale: ptBR })}
-                                    </p>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-semibold">{op.type} <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${op.status === 'Concluída' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{op.status}</span></p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {format(op.date.toDate(), "dd 'de' MMM, yyyy", { locale: ptBR })}
+                                        </p>
+                                    </div>
+
+                                    {op.inputs && op.inputs.length > 0 && (
+                                        <div className="mt-2 text-sm">
+                                            <p className="font-medium text-foreground">Insumos:</p>
+                                            <ul className="list-disc list-inside text-muted-foreground">
+                                                {op.inputs.map((input, index) => (
+                                                    <li key={index}>{input.itemName}: {input.quantity} {input.unit}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {op.description && (
+                                        <div className="mt-2 text-sm">
+                                             <p className="font-medium text-foreground">Observações:</p>
+                                             <p className="text-muted-foreground whitespace-pre-wrap">{op.description}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(op.id)}>
+                            <Button variant="ghost" size="icon" className="text-destructive ml-4" onClick={() => openDeleteDialog(op.id)}>
                                 <Trash2 className="h-4 w-4"/>
                             </Button>
                         </li>
