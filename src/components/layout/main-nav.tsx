@@ -22,7 +22,8 @@ import {
   Store,
   Map,
   Box,
-  ClipboardList
+  ClipboardList,
+  Wheat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ const topLevelNavItems = [
 ];
 
 const managementNavItems = [
+    { href: '/harvests', label: 'Safras', icon: Wheat },
     { href: '/farms', label: 'Gestão de Talhões', icon: Map },
     { href: '/items', label: 'Insumos', icon: Box },
     { href: '/inventory', label: 'Estoque', icon: Warehouse },
@@ -75,7 +77,7 @@ export function MainNav() {
         <Collapsible open={isManagementOpen} onOpenChange={setIsManagementOpen}>
             <CollapsibleTrigger asChild>
                  <Button
-                    variant={isManagementOpen || managementNavItems.some(item => pathname.startsWith(item.href)) ? 'ghost' : 'ghost'}
+                    variant={'ghost'}
                     className="w-full justify-start rounded-md"
                 >
                     <LayoutDashboard className="mr-3 h-5 w-5" />
