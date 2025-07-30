@@ -35,6 +35,7 @@ interface HarvestPlot {
     name: string;
     area: number;
     culture: string;
+    userId: string;
 }
 
 export default function ManageHarvestPage() {
@@ -95,22 +96,27 @@ export default function ManageHarvestPage() {
 
   // Fetch Plots associated with this Harvest
   useEffect(() => {
-    if (!harvestId || typeof harvestId !== 'string') return;
+    if (!harvestId || typeof harvestId !== 'string' || !user) return;
     const harvestPlotsCollection = collection(firestore, 'harvests', harvestId, 'harvestPlots');
-    
-    const unsubscribe = onSnapshot(harvestPlotsCollection, (snapshot) => {
+    // We can filter by userId here for security and efficiency, matching the Firestore rules.
+    const q = query(harvestPlotsCollection, where('userId', '==', user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedPlots = snapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data() 
         } as HarvestPlot));
         setHarvestPlots(fetchedPlots);
+    }, (error) => {
+        console.error("Erro ao buscar talhões da safra: ", error);
+        toast({ variant: "destructive", title: "Erro ao carregar talhões da safra", description: "Verifique suas permissões no Firestore."})
     });
 
     return () => unsubscribe();
-  }, [harvestId]);
+  }, [harvestId, user, toast]);
 
   const handleAddPlotToHarvest = async (plot: FarmPlot) => {
-    if (!harvestId || typeof harvestId !== 'string') return;
+    if (!harvestId || typeof harvestId !== 'string' || !user) return;
     setIsProcessing(true);
     try {
         const harvestPlotsCollection = collection(firestore, 'harvests', harvestId, 'harvestPlots');
@@ -118,7 +124,8 @@ export default function ManageHarvestPage() {
             plotId: plot.id,
             name: plot.name,
             area: plot.area,
-            culture: plot.culture
+            culture: plot.culture,
+            userId: user.uid // **CORREÇÃO: Adicionando o userId**
         });
         toast({ title: `"${plot.name}" adicionado à safra.`})
     } catch (error) {
