@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, Timestamp, collectionGroup } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ interface HarvestPlot {
     plotId: string;
     name: string;
     culture: string;
+    harvestId: string; // Adicionado para facilitar o agrupamento
 }
 
 interface HarvestWithPlots extends Harvest {
@@ -33,31 +34,70 @@ export default function PlanningPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        setIsLoading(false);
+        return;
+    }
 
-    const harvestsCollection = collection(firestore, 'harvests');
-    const q = query(harvestsCollection, where('userId', '==', user.uid));
+    const fetchAllData = async () => {
+        setIsLoading(true);
 
-    const unsubscribe = onSnapshot(q, async (harvestsSnapshot) => {
-      const harvestsData = harvestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Harvest));
-      
-      const harvestsWithPlotsData = await Promise.all(
-        harvestsData.map(async (harvest) => {
-          const plotsCollectionRef = collection(firestore, 'harvests', harvest.id, 'harvestPlots');
-          const plotsSnapshot = await getDocs(plotsCollectionRef);
-          const plotsData = plotsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as HarvestPlot));
-          return { ...harvest, plots: plotsData };
-        })
-      );
-      
-      // Ordenar safras pela data de início mais recente
-      harvestsWithPlotsData.sort((a, b) => b.startDate.toMillis() - a.startDate.toMillis());
+        // 1. Fetch all harvests for the user
+        const harvestsCollection = collection(firestore, 'harvests');
+        const harvestsQuery = query(harvestsCollection, where('userId', '==', user.uid));
+        
+        try {
+            const harvestsSnapshot = await getDocs(harvestsQuery);
+            const harvestsData = harvestsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Harvest));
 
-      setHarvestsWithPlots(harvestsWithPlotsData);
-      setIsLoading(false);
-    });
+            // 2. Fetch all harvestPlots for the user in a single query
+            const harvestPlotsCollectionGroup = collectionGroup(firestore, 'harvestPlots');
+            const harvestPlotsQuery = query(harvestPlotsCollectionGroup, where('userId', '==', user.uid));
+            const harvestPlotsSnapshot = await getDocs(harvestPlotsQuery);
+            const allHarvestPlots = harvestPlotsSnapshot.docs.map(doc => {
+                 const data = doc.data();
+                 const harvestId = doc.ref.parent.parent!.id; // Get harvestId from path
+                 return { 
+                    id: doc.id,
+                    harvestId,
+                    ...data 
+                } as HarvestPlot
+            });
 
-    return () => unsubscribe();
+            // 3. Group plots by harvest
+            const plotsByHarvestId = allHarvestPlots.reduce((acc, plot) => {
+                if (!acc[plot.harvestId]) {
+                    acc[plot.harvestId] = [];
+                }
+                acc[plot.harvestId].push(plot);
+                return acc;
+            }, {} as Record<string, HarvestPlot[]>);
+
+
+            // 4. Combine harvests with their plots
+            const combinedData = harvestsData.map(harvest => ({
+                ...harvest,
+                plots: plotsByHarvestId[harvest.id] || [],
+            }));
+            
+            // 5. Sort harvests by most recent start date
+            combinedData.sort((a, b) => b.startDate.toMillis() - a.startDate.toMillis());
+
+            setHarvestsWithPlots(combinedData);
+
+        } catch (error) {
+            console.error("Error fetching planning data: ", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    fetchAllData();
+    
+    // We are now fetching data once, not using a real-time listener for this complex view.
+    // If real-time is needed, a more complex listener management is required.
+    // For now, this is more robust against permission errors.
+
   }, [user]);
 
   if (isLoading) {
@@ -131,4 +171,3 @@ export default function PlanningPage() {
     </div>
   );
 }
-
