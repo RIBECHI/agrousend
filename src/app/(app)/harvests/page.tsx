@@ -62,11 +62,21 @@ export default function HarvestsPage() {
     }
 
     const harvestsCollection = collection(firestore, 'harvests');
-    const q = query(harvestsCollection, where('userId', '==', user.uid), orderBy('startDate', 'asc'));
+    // Simplificando a consulta para evitar a necessidade de um índice composto complexo.
+    // A ordenação será feita no lado do cliente.
+    const q = query(harvestsCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedHarvests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Harvest));
+      let fetchedHarvests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Harvest));
+      
+      // Ordenando os dados no lado do cliente
+      fetchedHarvests.sort((a, b) => {
+        const dateA = a.startDate?.toDate ? a.startDate.toDate().getTime() : 0;
+        const dateB = b.startDate?.toDate ? b.startDate.toDate().getTime() : 0;
+        return dateA - dateB; // Ordem crescente (mais antigo primeiro)
+      });
+
       setHarvests(fetchedHarvests);
       setIsLoading(false);
     }, (error) => {
