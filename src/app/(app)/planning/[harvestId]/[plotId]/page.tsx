@@ -118,10 +118,13 @@ export default function PlotOperationsPage() {
             // 3. Listener for operations, only after we confirm access.
             const operationsCollectionPath = `harvests/${harvestId}/harvestPlots/${plotId}/operations`;
             const operationsCollection = collection(firestore, operationsCollectionPath);
-            const q = query(operationsCollection, where('userId', '==', user.uid), orderBy('date', 'desc'));
+            // CORREÇÃO: Removido orderBy para evitar erro de índice. A ordenação será feita no cliente.
+            const q = query(operationsCollection, where('userId', '==', user.uid));
 
             unsubscribeOps = onSnapshot(q, (snapshot) => {
-                const fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
+                let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
+                // CORREÇÃO: Ordenando no lado do cliente.
+                fetchedOps.sort((a, b) => b.date.toMillis() - a.date.toMillis());
                 setOperations(fetchedOps);
             }, (error) => {
                 console.error("Erro ao buscar operações: ", error);
