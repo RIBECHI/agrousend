@@ -62,7 +62,7 @@ export default function HarvestsPage() {
     }
 
     const harvestsCollection = collection(firestore, 'harvests');
-    const q = query(harvestsCollection, where('userId', '==', user.uid), orderBy('startDate', 'desc'));
+    const q = query(harvestsCollection, where('userId', '==', user.uid), orderBy('startDate', 'asc'));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
