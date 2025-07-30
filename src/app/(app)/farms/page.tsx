@@ -80,7 +80,7 @@ export default function FarmsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar talhões: ", error);
-       if (error.code === 'permission-denied') {
+       if ((error as any).code === 'permission-denied') {
           toast({
             variant: "destructive",
             title: "Permissão Negada",
@@ -189,6 +189,10 @@ export default function FarmsPage() {
 
   const totalArea = plots.reduce((acc, plot) => acc + plot.area, 0);
 
+  const handleBoundsChange = useCallback((bounds: LatLngBounds) => {
+    setMapBounds(bounds);
+  }, []);
+
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -202,7 +206,7 @@ export default function FarmsPage() {
                 </CardHeader>
                 <CardContent className="h-[400px] w-full p-0">
                      <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                        <LeafletMapDisplay plots={plots} onBoundsChange={setMapBounds} onPlotClick={handleViewDetails} />
+                        <LeafletMapDisplay plots={plots} onBoundsChange={handleBoundsChange} onPlotClick={handleViewDetails} />
                     </Suspense>
                 </CardContent>
              </Card>

@@ -34,15 +34,15 @@ interface LeafletMapDisplayProps {
 const geoJsonStyle = {
     color: 'hsl(142, 60%, 35%)',
     weight: 2,
-    fillColor: 'rgba(142, 60%, 45%, 0.4)',
-    fillOpacity: 0.5,
+    fillColor: 'hsl(142, 60%, 45%)',
+    fillOpacity: 0.4,
 };
 
 const geoJsonHoverStyle = {
     color: 'hsl(142, 70%, 45%)',
     weight: 3,
-    fillColor: 'rgba(142, 70%, 55%, 0.6)',
-    fillOpacity: 0.7,
+    fillColor: 'hsl(142, 70%, 55%)',
+    fillOpacity: 0.6,
 };
 
 
@@ -82,7 +82,9 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             map.addLayer(drawnItemsRef.current);
             
             const handleBoundsChange = () => {
-                onBoundsChange(map.getBounds());
+                if (mapInstanceRef.current) {
+                    onBoundsChange(mapInstanceRef.current.getBounds());
+                }
             };
 
             map.on('moveend', handleBoundsChange);
@@ -111,15 +113,18 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                 plots.forEach(plot => {
                     if (plot.geoJson) {
                        try {
-                            const parsedGeoJson = JSON.parse(plot.geoJson);
+                            let parsedGeoJson = JSON.parse(plot.geoJson);
                             let feature = parsedGeoJson;
 
-                            // Handle old data format if it's just a geometry
+                            // Handle old data format if it's not a complete feature
                             if (feature.type !== 'Feature') {
-                                if (feature.geometry) { // Handles cases where it's { geometry: {...} }
+                                // Handles cases where it's { type: 'Polygon', coordinates: [...] }
+                                if(feature.coordinates) {
+                                     feature = { type: 'Feature', properties: {}, geometry: feature };
+                                } 
+                                // Handles cases where it's { geometry: { ... } }
+                                else if (feature.geometry) {
                                     feature = { type: 'Feature', properties: {}, geometry: feature.geometry };
-                                } else { // Handles cases where it's just the geometry object
-                                    feature = { type: 'Feature', properties: {}, geometry: feature };
                                 }
                             }
                             
@@ -148,10 +153,15 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                     }
                 });
                 
-                const bounds = drawnItems.getBounds();
-                if (bounds.isValid()) {
-                   map.fitBounds(bounds.pad(0.1));
+                // Only fit bounds if there is more than one plot, or it's the first load
+                // This prevents re-zooming when a single plot is selected for detail view
+                if (plots.length !== 1) {
+                    const bounds = drawnItems.getBounds();
+                    if (bounds.isValid()) {
+                       map.fitBounds(bounds.pad(0.1));
+                    }
                 }
+
             } else {
                  // If no plots, set to default view
                  map.setView([-15.7942, -47.8825], 4);
