@@ -103,19 +103,23 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onPlotClic
                 plots.forEach(plot => {
                     if (plot.geoJson) {
                        try {
-                            let parsedGeoJson = JSON.parse(plot.geoJson);
-                            let feature = parsedGeoJson;
-
-                            // Handle old data format if it's not a complete feature
-                            if (feature.type !== 'Feature') {
-                                // Handles cases where it's { type: 'Polygon', coordinates: [...] }
-                                if(feature.coordinates) {
-                                     feature = { type: 'Feature', properties: {}, geometry: feature };
-                                } 
-                                // Handles cases where it's { geometry: { ... } }
-                                else if (feature.geometry) {
-                                    feature = { type: 'Feature', properties: {}, geometry: feature.geometry };
-                                }
+                            const parsedGeoJson = JSON.parse(plot.geoJson);
+                            
+                            // This logic handles all known formats of the geoJson data
+                            let feature;
+                            if (parsedGeoJson.type === 'Feature') {
+                                // It's already a valid Feature
+                                feature = parsedGeoJson;
+                            } else if (parsedGeoJson.geometry && parsedGeoJson.geometry.type) {
+                                // It's an object with a geometry property, like { geometry: { ... } }
+                                // This is common from older layer.toGeoJSON() calls
+                                feature = { type: 'Feature', properties: {}, geometry: parsedGeoJson.geometry };
+                            } else if (parsedGeoJson.type && parsedGeoJson.coordinates) {
+                                // It's a raw geometry object, like { type: 'Polygon', coordinates: [...] }
+                                feature = { type: 'Feature', properties: {}, geometry: parsedGeoJson };
+                            } else {
+                                console.warn("Skipping invalid GeoJSON object for plot:", plot.id);
+                                return; // Skip this plot
                             }
                             
                             const geoJsonLayer = L.geoJSON(feature, { 
@@ -148,6 +152,11 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onPlotClic
                 if (plots.length !== 1) {
                     const bounds = drawnItems.getBounds();
                     if (bounds.isValid()) {
+                       map.fitBounds(bounds.pad(0.1));
+                    }
+                } else if (plots.length === 1) {
+                    const bounds = drawnItems.getBounds();
+                     if (bounds.isValid()) {
                        map.fitBounds(bounds.pad(0.1));
                     }
                 }
