@@ -82,9 +82,8 @@ const OperationIcon = ({ type }: { type: Operation['type']}) => {
 export default function PlotOperationsPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const params = useParams();
   const { toast } = useToast();
-  const { harvestId, plotId } = params as { harvestId: string, plotId: string };
+  const { harvestId, plotId } = useParams() as { harvestId: string, plotId: string };
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -140,11 +139,9 @@ export default function PlotOperationsPage() {
             });
             unsubscribes.push(opsUnsubscribe);
 
-            // CORREÇÃO: Removido o orderBy('name', 'asc') para evitar erro de índice.
             const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid));
             const itemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
                 let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
-                // Ordenação feita no lado do cliente.
                 fetchedItems.sort((a, b) => a.name.localeCompare(b.name));
                 setItems(fetchedItems);
             });
