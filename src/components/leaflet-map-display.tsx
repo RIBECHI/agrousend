@@ -17,12 +17,18 @@ L.Icon.Default.mergeOptions({
 
 interface FarmPlot {
   id: string;
-  geoJson: string;
+  name: string;
+  area: number;
+  culture: string;
+  geoJson: string; 
+  userId: string;
+  createdAt: any;
 }
 
 interface LeafletMapDisplayProps {
   plots: FarmPlot[];
   onBoundsChange: (bounds: LatLngBounds) => void;
+  onPlotClick?: (plot: FarmPlot) => void;
 }
 
 const geoJsonStyle = {
@@ -32,8 +38,15 @@ const geoJsonStyle = {
     fillOpacity: 0.5,
 };
 
+const geoJsonHoverStyle = {
+    color: 'hsl(142, 70%, 45%)',
+    weight: 3,
+    fillColor: 'rgba(142, 70%, 55%, 0.6)',
+    fillOpacity: 0.7,
+};
 
-const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsChange }) => {
+
+const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsChange, onPlotClick }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
@@ -110,7 +123,25 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                                 }
                             }
                             
-                            L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
+                            const geoJsonLayer = L.geoJSON(feature, { 
+                                style: geoJsonStyle,
+                                onEachFeature: (feature, layer) => {
+                                    if(onPlotClick) {
+                                        layer.on('click', () => {
+                                            onPlotClick(plot);
+                                        });
+
+                                        layer.on('mouseover', () => {
+                                            (layer as L.Path).setStyle(geoJsonHoverStyle);
+                                        });
+                                        layer.on('mouseout', () => {
+                                            (layer as L.Path).setStyle(geoJsonStyle);
+                                        });
+                                    }
+                                }
+                             });
+                            
+                            geoJsonLayer.addTo(drawnItems);
                        } catch (e) {
                             console.error("Failed to parse or add GeoJSON layer for plot:", plot.id, e);
                        }
@@ -126,7 +157,7 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                  map.setView([-15.7942, -47.8825], 4);
             }
         }
-    }, [plots]);
+    }, [plots, onPlotClick]);
 
 
   return (

@@ -197,12 +197,12 @@ export default function FarmsPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
                         <CardTitle>Visão Geral dos Talhões</CardTitle>
-                        <CardDescription>Visualize todos os seus talhões no mapa.</CardDescription>
+                        <CardDescription>Visualize e clique nos seus talhões no mapa.</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="h-[400px] w-full p-0">
                      <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                        <LeafletMapDisplay plots={plots} onBoundsChange={setMapBounds} />
+                        <LeafletMapDisplay plots={plots} onBoundsChange={setMapBounds} onPlotClick={handleViewDetails} />
                     </Suspense>
                 </CardContent>
              </Card>
@@ -360,7 +360,3 @@ export default function FarmsPage() {
     </>
   );
 }
-
-    
-
-    
