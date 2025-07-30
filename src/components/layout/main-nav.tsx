@@ -24,6 +24,7 @@ import {
   Box,
   ClipboardList,
   Wheat,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ const managementNavItems = [
     { href: '/farms', label: 'Gestão de Talhões', icon: Map },
     { href: '/items', label: 'Insumos', icon: Box },
     { href: '/inventory', label: 'Estoque', icon: Warehouse },
+    { href: '/planning', label: 'Planejamento', icon: ListChecks },
 ]
 
 const bottomLevelNavItems = [
