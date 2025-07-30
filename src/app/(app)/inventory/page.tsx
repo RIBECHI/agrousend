@@ -78,10 +78,13 @@ export default function InventoryPage() {
       return;
     }
     const logsCollection = collection(firestore, 'inventoryLogs');
-    const q = query(logsCollection, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    // CORREÇÃO: Removido o orderBy para evitar a necessidade de um índice composto.
+    const q = query(logsCollection, where('userId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryLog));
+      let fetchedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryLog));
+      // CORREÇÃO: Ordenação feita no lado do cliente.
+      fetchedLogs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       setLogs(fetchedLogs);
       setIsLoadingLogs(false);
     });
@@ -294,5 +297,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
