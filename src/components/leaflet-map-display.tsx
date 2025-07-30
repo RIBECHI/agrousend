@@ -50,6 +50,7 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
 
             L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
                 attribution: 'Tiles &copy; Esri',
+                maxZoom: 20,
             }).addTo(map);
 
             map.createPane('labels');
@@ -97,10 +98,21 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
                 plots.forEach(plot => {
                     if (plot.geoJson) {
                        try {
-                            const feature = JSON.parse(plot.geoJson);
+                            const parsedGeoJson = JSON.parse(plot.geoJson);
+                            let feature = parsedGeoJson;
+
+                            // Handle old data format if it's just a geometry
+                            if (feature.type !== 'Feature') {
+                                if (feature.geometry) { // Handles cases where it's { geometry: {...} }
+                                    feature = { type: 'Feature', properties: {}, geometry: feature.geometry };
+                                } else { // Handles cases where it's just the geometry object
+                                    feature = { type: 'Feature', properties: {}, geometry: feature };
+                                }
+                            }
+                            
                             L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
                        } catch (e) {
-                            console.error("Failed to parse or add GeoJSON layer for plot:", plot.id, e, plot.geoJson);
+                            console.error("Failed to parse or add GeoJSON layer for plot:", plot.id, e);
                        }
                     }
                 });
@@ -126,5 +138,3 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
 };
 
 export default LeafletMapDisplay;
-
-    

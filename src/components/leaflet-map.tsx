@@ -39,7 +39,7 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ onDrawComplete, initialBounds }
       
       const satelliteLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { attribution: 'Tiles &copy; Esri' }
+        { attribution: 'Tiles &copy; Esri', maxZoom: 20 }
       ).addTo(map);
 
       // Create a pane for the labels to ensure they are on top
