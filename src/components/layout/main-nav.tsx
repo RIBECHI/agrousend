@@ -45,6 +45,7 @@ const managementNavItems = [
     { href: '/farms', label: 'Gestão de Talhões', icon: Map },
     { href: '/items', label: 'Insumos', icon: Box },
     { href: '/inventory', label: 'Estoque', icon: Warehouse },
+    { href: '/machinery', label: 'Maquinário', icon: Tractor },
     { href: '/planning', label: 'Planejamento', icon: ListChecks },
 ]
 
