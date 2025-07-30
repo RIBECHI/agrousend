@@ -67,11 +67,12 @@ export default function MachineryPage() {
     }
 
     const machinesCollection = collection(firestore, 'machinery');
-    const q = query(machinesCollection, where('userId', '==', user.uid), orderBy('name', 'asc'));
+    const q = query(machinesCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMachines = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Machine));
+      let fetchedMachines = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Machine));
+      fetchedMachines.sort((a, b) => a.name.localeCompare(b.name));
       setMachines(fetchedMachines);
       setIsLoading(false);
     }, (error) => {
