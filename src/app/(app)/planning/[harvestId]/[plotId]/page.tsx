@@ -95,44 +95,43 @@ export default function PlotOperationsPage() {
     let unsubscribeOps: () => void = () => {};
 
     const fetchInitialDataAndSubscribe = async () => {
+        setIsLoading(true);
         try {
-            const plotDocRef = doc(firestore, 'farmPlots', plotId);
+            // 1. Fetch Harvest data first
             const harvestDocRef = doc(firestore, 'harvests', harvestId);
+            const harvestDoc = await getDoc(harvestDocRef);
 
-            const [plotDoc, harvestDoc] = await Promise.all([
-                getDoc(plotDocRef),
-                getDoc(harvestDoc)
-            ]);
-
-            if (plotDoc.exists() && plotDoc.data().userId === user.uid) {
-                setPlot({ id: plotDoc.id, ...plotDoc.data() } as FarmPlot);
-            } else {
-                 throw new Error("Talhão não encontrado ou acesso negado.");
+            if (!harvestDoc.exists() || harvestDoc.data().userId !== user.uid) {
+                throw new Error("Safra não encontrada ou acesso negado.");
             }
+            setHarvest({ id: harvestDoc.id, ...harvestDoc.data() } as Harvest);
+            
+            // 2. Fetch Plot data
+            const plotDocRef = doc(firestore, 'farmPlots', plotId);
+            const plotDoc = await getDoc(plotDocRef);
 
-            if (harvestDoc.exists() && harvestDoc.data().userId === user.uid) {
-                setHarvest({ id: harvestDoc.id, ...harvestDoc.data() } as Harvest);
-            } else {
-                 throw new Error("Safra não encontrada ou acesso negado.");
+            if (!plotDoc.exists() || plotDoc.data().userId !== user.uid) {
+                throw new Error("Talhão não encontrado ou acesso negado.");
             }
+            setPlot({ id: plotDoc.id, ...plotDoc.data() } as FarmPlot);
 
-             // Listener for operations, only after we confirm access.
-            const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
+            // 3. Listener for operations, only after we confirm access.
+            const operationsCollectionPath = `harvests/${harvestId}/harvestPlots/${plotId}/operations`;
+            const operationsCollection = collection(firestore, operationsCollectionPath);
             const q = query(operationsCollection, where('userId', '==', user.uid), orderBy('date', 'desc'));
 
             unsubscribeOps = onSnapshot(q, (snapshot) => {
                 const fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
                 setOperations(fetchedOps);
-                setIsLoading(false);
             }, (error) => {
                 console.error("Erro ao buscar operações: ", error);
                 toast({ variant: 'destructive', title: 'Erro ao carregar operações.'});
-                setIsLoading(false);
             });
 
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: err.message });
             router.push('/planning');
+        } finally {
             setIsLoading(false);
         }
     };
