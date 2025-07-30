@@ -82,7 +82,7 @@ export default function FarmsPage() {
           toast({
             variant: "destructive",
             title: "Permissão Negada",
-            description: "Você não tem permissão para ver estes dados. Verifique as Regras de Segurança do Firestore.",
+            description: "Você não tem permissão para ler os dados dos talhões. Verifique suas Regras de Segurança do Firestore para permitir a operação de 'read'.",
           });
       } else {
         toast({
@@ -357,4 +357,5 @@ export default function FarmsPage() {
         </AlertDialog>
     </>
   );
-}
+
+    
