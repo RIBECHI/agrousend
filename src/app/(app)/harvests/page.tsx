@@ -71,9 +71,17 @@ export default function HarvestsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar safras: ", error);
+      let description = "Ocorreu um erro ao carregar as safras.";
+      if ((error as any).code === 'failed-precondition') {
+        description = "A consulta requer um índice do Firestore. Verifique o console do navegador para obter o link para criá-lo.";
+      } else if ((error as any).code === 'permission-denied') {
+        description = "Você não tem permissão para ver as safras. Verifique as Regras de Segurança do Firestore.";
+      }
+      
       toast({
         variant: "destructive",
-        title: "Erro ao carregar safras.",
+        title: "Erro ao carregar safras",
+        description: description,
       });
       setIsLoading(false);
     });
