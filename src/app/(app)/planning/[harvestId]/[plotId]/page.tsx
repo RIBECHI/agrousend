@@ -92,7 +92,9 @@ export default function PlotOperationsPage() {
   useEffect(() => {
     if (!user || !harvestId || !plotId) return;
 
-    const fetchInitialData = async () => {
+    let unsubscribeOps: () => void = () => {};
+
+    const fetchInitialDataAndSubscribe = async () => {
         try {
             const plotDocRef = doc(firestore, 'farmPlots', plotId);
             const harvestDocRef = doc(firestore, 'harvests', harvestId);
@@ -113,29 +115,31 @@ export default function PlotOperationsPage() {
             } else {
                  throw new Error("Safra não encontrada ou acesso negado.");
             }
+
+             // Listener for operations, only after we confirm access.
+            const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
+            const q = query(operationsCollection, where('userId', '==', user.uid), orderBy('date', 'desc'));
+
+            unsubscribeOps = onSnapshot(q, (snapshot) => {
+                const fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
+                setOperations(fetchedOps);
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Erro ao buscar operações: ", error);
+                toast({ variant: 'destructive', title: 'Erro ao carregar operações.'});
+                setIsLoading(false);
+            });
+
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: err.message });
             router.push('/planning');
+            setIsLoading(false);
         }
     };
 
-    fetchInitialData();
-
-    // Listener for operations
-    const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
-    const q = query(operationsCollection, where('userId', '==', user.uid), orderBy('date', 'desc'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
-        setOperations(fetchedOps);
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Erro ao buscar operações: ", error);
-        toast({ variant: 'destructive', title: 'Erro ao carregar operações.'});
-        setIsLoading(false);
-    });
-
-    return () => unsubscribe();
+    fetchInitialDataAndSubscribe();
+    
+    return () => unsubscribeOps();
   }, [user, harvestId, plotId, router, toast]);
   
   const resetForm = useCallback(() => {
