@@ -62,8 +62,6 @@ export default function FarmsPage() {
   const [selectedPlot, setSelectedPlot] = useState<FarmPlot | null>(null);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
 
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-
   useEffect(() => {
     if (!user) {
       setIsLoading(false);
@@ -189,10 +187,6 @@ export default function FarmsPage() {
 
   const totalArea = plots.reduce((acc, plot) => acc + plot.area, 0);
 
-  const handleBoundsChange = useCallback((bounds: LatLngBounds) => {
-    setMapBounds(bounds);
-  }, []);
-
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -206,7 +200,7 @@ export default function FarmsPage() {
                 </CardHeader>
                 <CardContent className="h-[400px] w-full p-0">
                      <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                        <LeafletMapDisplay plots={plots} onBoundsChange={handleBoundsChange} onPlotClick={handleViewDetails} />
+                        <LeafletMapDisplay plots={plots} onPlotClick={handleViewDetails} />
                     </Suspense>
                 </CardContent>
              </Card>
@@ -292,7 +286,7 @@ export default function FarmsPage() {
                         </div>
                         <div className="md:col-span-2 h-[400px] md:h-full w-full rounded-lg overflow-hidden">
                            <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                             <LeafletMap onDrawComplete={handleDrawComplete} initialBounds={mapBounds} />
+                             <LeafletMap onDrawComplete={handleDrawComplete} initialBounds={null} />
                            </Suspense>
                         </div>
                     </div>
@@ -330,7 +324,7 @@ export default function FarmsPage() {
                             <Label>Mapa</Label>
                             <div className="h-[300px] w-full rounded-lg overflow-hidden mt-2">
                                 <Suspense fallback={<Skeleton className="h-full w-full" />}>
-                                    <LeafletMapDisplay plots={[selectedPlot]} onBoundsChange={() => {}} />
+                                    <LeafletMapDisplay plots={[selectedPlot]} />
                                 </Suspense>
                             </div>
                         </div>

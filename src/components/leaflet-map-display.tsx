@@ -27,7 +27,6 @@ interface FarmPlot {
 
 interface LeafletMapDisplayProps {
   plots: FarmPlot[];
-  onBoundsChange: (bounds: LatLngBounds) => void;
   onPlotClick?: (plot: FarmPlot) => void;
 }
 
@@ -46,7 +45,7 @@ const geoJsonHoverStyle = {
 };
 
 
-const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsChange, onPlotClick }) => {
+const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onPlotClick }) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapInstanceRef = useRef<L.Map | null>(null);
     const drawnItemsRef = useRef<L.FeatureGroup | null>(null);
@@ -80,15 +79,6 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             
             drawnItemsRef.current = new L.FeatureGroup();
             map.addLayer(drawnItemsRef.current);
-            
-            const handleBoundsChange = () => {
-                if (mapInstanceRef.current) {
-                    onBoundsChange(mapInstanceRef.current.getBounds());
-                }
-            };
-
-            map.on('moveend', handleBoundsChange);
-            map.on('zoomend', handleBoundsChange);
         }
     
         return () => {
