@@ -4,14 +4,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, serverTimestamp, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Pencil, Tractor } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Pencil, Tractor, Wrench, Info } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 
 interface Machine {
   id: string;
@@ -53,12 +54,16 @@ export default function MachineryPage() {
   const [type, setType] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [year, setYear] = useState<number | ''>();
+  const [year, setYear] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Dialog state
   const [machineToDelete, setMachineToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  // Detail view state
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -108,10 +113,15 @@ export default function MachineryPage() {
     }
   }, [isSheetOpen, editingMachine, resetForm]);
 
-  const handleOpenSheet = (machine: Machine | null) => {
+  const handleOpenEditSheet = (machine: Machine | null) => {
     setEditingMachine(machine);
     setIsSheetOpen(true);
   }
+  
+  const handleViewDetails = (machine: Machine) => {
+    setSelectedMachine(machine);
+    setIsDetailSheetOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,7 +186,7 @@ export default function MachineryPage() {
     <>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gestão de Maquinário</h1>
-        <Button onClick={() => handleOpenSheet(null)}>
+        <Button onClick={() => handleOpenEditSheet(null)}>
             <PlusCircle className="mr-2" />
             Cadastrar Máquina
         </Button>
@@ -199,7 +209,7 @@ export default function MachineryPage() {
                     <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">Nenhuma máquina cadastrada</h3>
                     <p className="mt-1 text-sm text-muted-foreground">Comece cadastrando seu primeiro trator, colheitadeira ou implemento.</p>
                     <div className="mt-6">
-                        <Button onClick={() => handleOpenSheet(null)}>
+                        <Button onClick={() => handleOpenEditSheet(null)}>
                             <PlusCircle className="mr-2" />
                             Cadastrar Máquina
                         </Button>
@@ -208,24 +218,26 @@ export default function MachineryPage() {
             ) : (
                 <ul className="divide-y divide-gray-200 dark:divide-gray-700">
                     {machines.map((machine) => (
-                        <li key={machine.id} className="py-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-primary/10 text-primary p-3 rounded-full">
-                                    <Tractor />
+                        <li key={machine.id} className="py-3 px-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => handleViewDetails(machine)}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-primary/10 text-primary p-3 rounded-full">
+                                        <Tractor />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{machine.name}</p>
+                                        <p className="text-sm text-muted-foreground">{machine.brand} {machine.model} - Ano {machine.year}</p>
+                                        <p className="text-xs font-medium bg-secondary text-secondary-foreground rounded-full px-2 py-0.5 inline-block mt-1">{machine.type}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-semibold">{machine.name}</p>
-                                    <p className="text-sm text-muted-foreground">{machine.brand} {machine.model} - Ano {machine.year}</p>
-                                    <p className="text-xs font-medium bg-secondary text-secondary-foreground rounded-full px-2 py-0.5 inline-block mt-1">{machine.type}</p>
+                                <div className='flex gap-2'>
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenEditSheet(machine); }}>
+                                        <Pencil className="h-5 w-5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={(e) => { e.stopPropagation(); openDeleteDialog(machine.id); }}>
+                                        <Trash2 className="h-5 w-5" />
+                                    </Button>
                                 </div>
-                            </div>
-                            <div className='flex gap-2'>
-                                <Button variant="ghost" size="icon" onClick={() => handleOpenSheet(machine)}>
-                                    <Pencil className="h-5 w-5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(machine.id)}>
-                                    <Trash2 className="h-5 w-5" />
-                                </Button>
                             </div>
                         </li>
                     ))}
@@ -287,6 +299,45 @@ export default function MachineryPage() {
               </SheetFooter>
             </form>
           </SheetContent>
+        </Sheet>
+      
+        <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
+            <SheetContent className="w-full sm:max-w-lg">
+                <SheetHeader>
+                    <SheetTitle>{selectedMachine?.name}</SheetTitle>
+                    <SheetDescription>Detalhes do equipamento selecionado.</SheetDescription>
+                </SheetHeader>
+                 {selectedMachine && (
+                    <div className="py-6 flex flex-col gap-4">
+                        <Separator />
+                        <div className="flex justify-between items-center">
+                            <Label>Tipo</Label>
+                            <p className="font-medium">{selectedMachine.type}</p>
+                        </div>
+                        <Separator />
+                         <div className="flex justify-between items-center">
+                            <Label>Marca</Label>
+                            <p className="font-medium">{selectedMachine.brand}</p>
+                        </div>
+                         <Separator />
+                         <div className="flex justify-between items-center">
+                            <Label>Modelo</Label>
+                            <p className="font-medium">{selectedMachine.model}</p>
+                        </div>
+                         <Separator />
+                         <div className="flex justify-between items-center">
+                            <Label>Ano</Label>
+                            <p className="font-medium">{selectedMachine.year}</p>
+                        </div>
+                         <Separator />
+                    </div>
+                )}
+                <SheetFooter>
+                    <SheetClose asChild>
+                        <Button variant="outline">Fechar</Button>
+                    </SheetClose>
+                </SheetFooter>
+            </SheetContent>
         </Sheet>
 
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
