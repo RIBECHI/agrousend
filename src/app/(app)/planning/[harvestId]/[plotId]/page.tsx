@@ -140,9 +140,12 @@ export default function PlotOperationsPage() {
             });
             unsubscribes.push(opsUnsubscribe);
 
-            const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid), orderBy('name', 'asc'));
+            // CORREÇÃO: Removido o orderBy('name', 'asc') para evitar erro de índice.
+            const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid));
             const itemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
-                const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+                let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+                // Ordenação feita no lado do cliente.
+                fetchedItems.sort((a, b) => a.name.localeCompare(b.name));
                 setItems(fetchedItems);
             });
             unsubscribes.push(itemsUnsubscribe);
