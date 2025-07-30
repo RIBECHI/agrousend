@@ -46,6 +46,7 @@ const managementNavItems = [
 
 const bottomLevelNavItems = [
   { href: '/profile', label: 'Perfil', icon: User },
+  { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 export function MainNav() {
@@ -107,7 +108,7 @@ export function MainNav() {
         <Button
           key={item.href}
           asChild
-          variant={pathname === item.href ? 'secondary' : 'ghost'}
+          variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
           className="w-full justify-start rounded-md"
         >
           <Link href={item.href}>
@@ -119,5 +120,3 @@ export function MainNav() {
     </nav>
   );
 }
-
-    
