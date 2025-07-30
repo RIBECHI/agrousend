@@ -58,6 +58,10 @@ export default function FarmsPage() {
   const [plotToDelete, setPlotToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
+  // Detail view state
+  const [selectedPlot, setSelectedPlot] = useState<FarmPlot | null>(null);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+
   const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
 
   useEffect(() => {
@@ -155,6 +159,11 @@ export default function FarmsPage() {
     setPlotToDelete(plotId);
     setShowDeleteAlert(true);
   }
+  
+  const handleViewDetails = (plot: FarmPlot) => {
+    setSelectedPlot(plot);
+    setIsDetailSheetOpen(true);
+  };
 
   const handleDeletePlot = async (plotId: string | null) => {
     if (!plotId) return;
@@ -213,16 +222,21 @@ export default function FarmsPage() {
                     ) : plots.length === 0 ? (
                         <p className="text-center text-muted-foreground py-8">Nenhum talhão cadastrado.</p>
                     ) : (
-                       <ul className="space-y-4">
+                       <ul className="space-y-2">
                             {plots.map(plot => (
-                                <li key={plot.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                    <div>
-                                        <p className="font-semibold">{plot.name}</p>
-                                        <p className="text-sm text-muted-foreground">{plot.culture} - {plot.area.toFixed(2)} ha</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(plot.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                <li key={plot.id}>
+                                    <button 
+                                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+                                        onClick={() => handleViewDetails(plot)}
+                                    >
+                                        <div>
+                                            <p className="font-semibold">{plot.name}</p>
+                                            <p className="text-sm text-muted-foreground">{plot.culture} - {plot.area.toFixed(2)} ha</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={(e) => { e.stopPropagation(); openDeleteDialog(plot.id); }}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </button>
                                 </li>
                             ))}
                         </ul>
@@ -291,6 +305,42 @@ export default function FarmsPage() {
             </Sheet>
         </div>
       </div>
+      
+        <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
+            <SheetContent className="w-full sm:max-w-lg">
+                <SheetHeader>
+                    <SheetTitle>{selectedPlot?.name}</SheetTitle>
+                    <SheetDescription>Detalhes do talhão selecionado.</SheetDescription>
+                </SheetHeader>
+                 {selectedPlot && (
+                    <div className="py-6 flex flex-col gap-4">
+                        <div className="space-y-1">
+                            <Label>Cultura</Label>
+                            <p className="text-lg font-medium">{selectedPlot.culture}</p>
+                        </div>
+                         <div className="space-y-1">
+                            <Label>Área</Label>
+                            <p className="text-lg font-medium">{selectedPlot.area.toFixed(4)} hectares</p>
+                        </div>
+                         <div className="space-y-1">
+                            <Label>Mapa</Label>
+                            <div className="h-[300px] w-full rounded-lg overflow-hidden mt-2">
+                                <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                                    <LeafletMapDisplay plots={[selectedPlot]} onBoundsChange={() => {}} />
+                                </Suspense>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <SheetFooter>
+                    <SheetClose asChild>
+                        <Button variant="outline">Fechar</Button>
+                    </SheetClose>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
+
+
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -310,5 +360,7 @@ export default function FarmsPage() {
     </>
   );
 }
+
+    
 
     
