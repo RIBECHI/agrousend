@@ -17,7 +17,7 @@ L.Icon.Default.mergeOptions({
 
 interface FarmPlot {
   id: string;
-  geoJson: any;
+  geoJson: string;
 }
 
 interface LeafletMapDisplayProps {
@@ -96,34 +96,11 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
             if (plots && plots.length > 0) {
                 plots.forEach(plot => {
                     if (plot.geoJson) {
-                       let feature;
-                       // Handle different saved formats for backward compatibility
-                       if (plot.geoJson.type === 'Feature') {
-                           // It's already a valid Feature object
-                           feature = plot.geoJson;
-                       } else if (plot.geoJson.geometry) {
-                           // It's likely an old format that wrapped the geometry
-                           feature = {
-                               type: 'Feature',
-                               properties: {},
-                               geometry: plot.geoJson.geometry
-                           };
-                       } else if (plot.geoJson.type && plot.geoJson.coordinates) {
-                            // It's likely just a geometry object
-                            feature = {
-                                type: 'Feature',
-                                properties: {},
-                                geometry: plot.geoJson
-                            };
-                       } else {
-                            console.warn("Skipping invalid geoJson for plot:", plot.id, plot.geoJson);
-                            return; // Skip this plot as its geoJson is invalid
-                       }
-
                        try {
+                            const feature = JSON.parse(plot.geoJson);
                             L.geoJSON(feature, { style: geoJsonStyle }).addTo(drawnItems);
                        } catch (e) {
-                            console.error("Failed to add GeoJSON layer for plot:", plot.id, e, feature);
+                            console.error("Failed to parse or add GeoJSON layer for plot:", plot.id, e, plot.geoJson);
                        }
                     }
                 });
@@ -149,3 +126,5 @@ const LeafletMapDisplay: React.FC<LeafletMapDisplayProps> = ({ plots, onBoundsCh
 };
 
 export default LeafletMapDisplay;
+
+    

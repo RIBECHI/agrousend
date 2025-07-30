@@ -35,7 +35,7 @@ interface FarmPlot {
   name: string;
   area: number;
   culture: string;
-  geoJson: any; 
+  geoJson: string; 
   userId: string;
   createdAt: Timestamp;
 }
@@ -125,7 +125,7 @@ export default function FarmsPage() {
             name,
             culture,
             area,
-            geoJson: geoJson, // Save the full GeoJSON Feature object
+            geoJson: JSON.stringify(geoJson),
             createdAt: serverTimestamp(),
         };
 
