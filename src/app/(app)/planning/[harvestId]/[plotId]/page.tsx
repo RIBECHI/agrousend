@@ -5,11 +5,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -83,7 +83,7 @@ export default function PlotOperationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { harvestId, plotId } = useParams() as { harvestId: string, plotId: string };
+  const { harvestId, plotId } = useParams() as { harvestId: string; plotId: string };
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -94,7 +94,9 @@ export default function PlotOperationsPage() {
   // Sheet state
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [editingOperation, setEditingOperation] = useState<Operation | null>(null);
+  const isEditing = !!editingOperation;
+
   // Form state
   const [opType, setOpType] = useState<string>('');
   const [opDate, setOpDate] = useState<Date | undefined>();
@@ -121,7 +123,7 @@ export default function PlotOperationsPage() {
             if (!harvestDoc.exists() || harvestDoc.data().userId !== user.uid) {
                 throw new Error("Safra não encontrada ou acesso negado.");
             }
-            setHarvest({ id: harvestDoc.id, ...harvestDoc.data() } as Harvest);
+            setHarvest({ id: harvestDoc.id, ...harvestDoc.data() as Omit<Harvest, 'id'> });
             
             const plotDocRef = doc(firestore, 'farmPlots', plotId);
             const plotDoc = await getDoc(plotDocRef);
@@ -129,7 +131,7 @@ export default function PlotOperationsPage() {
             if (!plotDoc.exists() || plotDoc.data().userId !== user.uid) {
                 throw new Error("Talhão não encontrado ou acesso negado.");
             }
-            setPlot({ id: plotDoc.id, ...plotDoc.data() } as FarmPlot);
+            setPlot({ id: plotDoc.id, ...plotDoc.data() as Omit<FarmPlot, 'id'> });
 
             const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`), where('userId', '==', user.uid));
             const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
@@ -167,7 +169,22 @@ export default function PlotOperationsPage() {
     setOpStatus('Planejada');
     setOpInputs([]);
     setIsSubmitting(false);
+    setEditingOperation(null);
   }, []);
+
+  const handleOpenSheet = (operation: Operation | null) => {
+    if (operation) {
+        setEditingOperation(operation);
+        setOpType(operation.type);
+        setOpDate(operation.date.toDate());
+        setOpDescription(operation.description);
+        setOpStatus(operation.status);
+        setOpInputs(operation.inputs.map(i => ({ itemId: i.itemId, quantity: i.quantity })));
+    } else {
+        resetForm();
+    }
+    setIsSheetOpen(true);
+  }
 
   const handleAddInput = () => {
     setOpInputs(prev => [...prev, { itemId: '', quantity: 0 }]);
@@ -221,18 +238,23 @@ export default function PlotOperationsPage() {
             description: opDescription,
             inputs: validInputs,
             status: opStatus,
-            createdAt: serverTimestamp(),
         };
 
-        const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
-        await addDoc(operationsCollection, opData);
-
-        toast({ title: 'Sucesso!', description: 'Operação registrada.'});
+        if (isEditing && editingOperation) {
+            const opDocRef = doc(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`, editingOperation.id);
+            await updateDoc(opDocRef, opData);
+            toast({ title: 'Sucesso!', description: 'Operação atualizada.'});
+        } else {
+            const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
+            await addDoc(operationsCollection, { ...opData, createdAt: serverTimestamp() });
+            toast({ title: 'Sucesso!', description: 'Operação registrada.'});
+        }
+        
         resetForm();
         setIsSheetOpen(false);
     } catch (error) {
         console.error("Erro ao salvar operação: ", error);
-        toast({ variant: 'destructive', title: 'Erro ao salvar', description: 'Não foi possível registrar a operação.'});
+        toast({ variant: 'destructive', title: 'Erro ao salvar', description: 'Não foi possível salvar a operação.'});
     } finally {
         setIsSubmitting(false);
     }
@@ -289,7 +311,7 @@ export default function PlotOperationsPage() {
         <h2 className="text-xl font-bold">Operações do Talhão</h2>
          <Sheet open={isSheetOpen} onOpenChange={(open) => { if(!open) resetForm(); setIsSheetOpen(open); }}>
           <SheetTrigger asChild>
-            <Button>
+            <Button onClick={() => handleOpenSheet(null)}>
               <PlusCircle className="mr-2" />
               Adicionar Operação
             </Button>
@@ -297,8 +319,10 @@ export default function PlotOperationsPage() {
           <SheetContent className="w-full sm:max-w-md">
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
                 <SheetHeader>
-                    <SheetTitle>Nova Operação</SheetTitle>
-                    <SheetDescription>Registre uma atividade planejada ou realizada neste talhão.</SheetDescription>
+                    <SheetTitle>{isEditing ? 'Editar Operação' : 'Nova Operação'}</SheetTitle>
+                    <SheetDescription>
+                        {isEditing ? 'Altere os detalhes da atividade.' : 'Registre uma atividade planejada ou realizada neste talhão.'}
+                    </SheetDescription>
                 </SheetHeader>
                 <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
                      <div>
@@ -384,7 +408,7 @@ export default function PlotOperationsPage() {
                  <SheetFooter className="pt-4 mt-auto">
                     <SheetClose asChild><Button type="button" variant="outline">Cancelar</Button></SheetClose>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : 'Salvar Operação'}
+                        {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Salvar Operação'}
                     </Button>
                 </SheetFooter>
             </form>
@@ -433,9 +457,14 @@ export default function PlotOperationsPage() {
                                     )}
                                 </div>
                             </div>
-                            <Button variant="ghost" size="icon" className="text-destructive ml-4" onClick={() => openDeleteDialog(op.id)}>
-                                <Trash2 className="h-4 w-4"/>
-                            </Button>
+                            <div className="flex items-center ml-2">
+                                <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => handleOpenSheet(op)}>
+                                    <Pencil className="h-4 w-4"/>
+                                </Button>
+                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(op.id)}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </div>
                         </li>
                     ))}
                 </ul>
