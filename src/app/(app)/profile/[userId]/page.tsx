@@ -30,9 +30,8 @@ const getRoleDisplayName = (role?: UserRole) => {
 export default function PublicProfilePage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
-  const params = useParams();
+  const { userId } = useParams() as { userId: string };
   const { toast } = useToast();
-  const { userId } = params;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);

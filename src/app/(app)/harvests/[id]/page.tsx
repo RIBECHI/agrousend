@@ -41,9 +41,8 @@ interface HarvestPlot {
 export default function ManageHarvestPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const params = useParams();
+  const { id: harvestId } = useParams() as { id: string };
   const { toast } = useToast();
-  const { id: harvestId } = params;
 
   const [harvest, setHarvest] = useState<Harvest | null>(null);
   const [allPlots, setAllPlots] = useState<FarmPlot[]>([]);
@@ -249,4 +248,3 @@ export default function ManageHarvestPage() {
     </div>
   );
 }
-
