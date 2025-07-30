@@ -225,8 +225,8 @@ export default function FarmsPage() {
                        <ul className="space-y-2">
                             {plots.map(plot => (
                                 <li key={plot.id}>
-                                    <button 
-                                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+                                    <div 
+                                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left cursor-pointer"
                                         onClick={() => handleViewDetails(plot)}
                                     >
                                         <div>
@@ -236,7 +236,7 @@ export default function FarmsPage() {
                                         <Button variant="ghost" size="icon" className="text-destructive" onClick={(e) => { e.stopPropagation(); openDeleteDialog(plot.id); }}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
-                                    </button>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
