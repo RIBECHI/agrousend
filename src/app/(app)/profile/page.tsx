@@ -136,7 +136,7 @@ export default function ProfilePage() {
         const permission = await Notification.requestPermission();
 
         if (permission === 'granted') {
-            const currentToken = await getToken(messaging, { vapidKey: 'BPEkM5nKZAey3pyA5bS3bLpWEXGk5bcs_3-h_w3G_E0Y3S1f1W_pZ_xX_o_xX_o_xX_o_xX_o_xX_o_xX_o_xX' });
+            const currentToken = await getToken(messaging, { vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY });
             if (currentToken) {
                 const userDocRef = doc(firestore, 'users', user.uid);
                 await updateDoc(userDocRef, {

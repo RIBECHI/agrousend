@@ -10,13 +10,13 @@ import { getMessaging } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  "projectId": "agrous-iq0pb",
-  "appId": "1:1073025714869:web:d65919dfe0b7c097378cfc",
-  "storageBucket": "agrous-iq0pb.appspot.com",
-  "apiKey": "AIzaSyBjD03BV3-ERs7OXmt50SpkjlN54OGlJ2I",
-  "authDomain": "agrous-iq0pb.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "1073025714869"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase for SSR
