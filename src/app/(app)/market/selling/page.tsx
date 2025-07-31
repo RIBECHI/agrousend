@@ -43,6 +43,8 @@ interface Listing {
   imageUrls: string[];
   createdAt: Timestamp;
   status?: 'active' | 'sold';
+  year?: number;
+  hours?: number;
 }
 
 export default function SellingPage() {

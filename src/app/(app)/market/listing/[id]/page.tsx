@@ -8,7 +8,7 @@ import { firestore } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy } from 'lucide-react';
+import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy, Calendar, Clock } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -27,6 +27,8 @@ interface Listing {
   location: string;
   imageUrls: string[];
   createdAt: any;
+  year?: number;
+  hours?: number;
 }
 
 export default function ListingDetailPage() {
@@ -81,6 +83,11 @@ export default function ListingDetailPage() {
         style: 'currency',
         currency: 'BRL',
     }).format(price);
+  }
+  
+  const formattedHours = (hours: number | undefined) => {
+    if (!hours) return '-';
+    return new Intl.NumberFormat('pt-BR').format(hours) + ' h';
   }
 
   if (isLoading) {
@@ -186,7 +193,19 @@ export default function ListingDetailPage() {
                                 <MapPin className="h-5 w-5" />
                                 <span>{listing.location}</span>
                             </div>
-                                <div className="flex items-center gap-2 col-span-2">
+                            {listing.category === 'Tratores' && listing.year && (
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="h-5 w-5" />
+                                    <span>Ano: {listing.year}</span>
+                                </div>
+                            )}
+                            {listing.category === 'Tratores' && listing.hours && (
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-5 w-5" />
+                                    <span>{formattedHours(listing.hours)}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 col-span-2">
                                 <User className="h-5 w-5" />
                                 <span>Vendido por: <Link href={`/profile/${listing.userId}`} className="font-medium text-foreground hover:underline">{capitalizeName(listing.authorName)}</Link></span>
                             </div>

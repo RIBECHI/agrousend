@@ -41,6 +41,8 @@ interface Listing {
   imageUrls: string[];
   createdAt: any;
   status?: 'active' | 'sold';
+  year?: number;
+  hours?: number;
 }
 
 
@@ -69,6 +71,8 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
+    const [year, setYear] = useState('');
+    const [hours, setHours] = useState('');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,6 +149,8 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
           setDescription(editingListing.description);
           setPrice(editingListing.price.toString());
           setCategory(editingListing.category);
+          setYear(editingListing.year?.toString() || '');
+          setHours(editingListing.hours?.toString() || '');
           setImagePreviews(editingListing.imageUrls);
           setImageFiles([]); // Clear old files on edit
           
@@ -197,6 +203,8 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
         setDescription('');
         setPrice('');
         setCategory('');
+        setYear('');
+        setHours('');
         setSelectedState('');
         setSelectedCity('');
         setCities([]);
@@ -266,6 +274,11 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                 imageUrls: finalImageUrls,
                 status: editingListing?.status || 'active',
             };
+
+            if (category === 'Tratores') {
+                if (year) listingData.year = parseInt(year, 10);
+                if (hours) listingData.hours = parseInt(hours, 10);
+            }
 
             if(isEditing) {
               const docRef = doc(firestore, 'listings', editingListing.id);
@@ -365,6 +378,20 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                             </Select>
                         </div>
                     </div>
+                    
+                    {category === 'Tratores' && (
+                        <div className="grid grid-cols-2 gap-4">
+                             <div className="space-y-1">
+                                <Label htmlFor="year">Ano</Label>
+                                <Input id="year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ex: 2020" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="hours">Horas de uso</Label>
+                                <Input id="hours" type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Ex: 1500" />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <Label htmlFor="state">Estado</Label>
