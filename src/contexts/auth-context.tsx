@@ -7,7 +7,7 @@ import { auth, firestore } from '@/lib/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 // Define a união de tipos para o papel do usuário
-export type UserRole = 'producer' | 'supplier' | 'service_provider';
+export type UserRole = 'producer' | 'supplier' | 'service_provider' | 'admin';
 
 // Combina o usuário do Auth com os dados do Firestore
 export interface UserProfile {
@@ -16,6 +16,7 @@ export interface UserProfile {
   email: string | null;
   photoURL: string | null;
   role?: UserRole;
+  isBlocked?: boolean;
 }
 
 interface AuthContextType {
@@ -40,13 +41,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const unsubscribeFirestore = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             const userData = doc.data();
-            setUser({
+            const userProfile: UserProfile = {
               uid: firebaseUser.uid,
               displayName: firebaseUser.displayName,
               email: firebaseUser.email,
               photoURL: firebaseUser.photoURL,
-              role: userData.role, // Adiciona o role do Firestore
-            });
+              role: userData.role,
+              isBlocked: userData.isBlocked || false,
+            };
+             // ATENÇÃO: Se o usuário estiver bloqueado, desloga ele.
+            if (userProfile.isBlocked) {
+                auth.signOut();
+                setUser(null);
+                setLoading(false);
+            } else {
+                setUser(userProfile);
+            }
           } else {
              // Se o documento não existe, usa apenas os dados do Auth.
              // Isso pode acontecer brevemente durante o cadastro.
@@ -55,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               displayName: firebaseUser.displayName,
               email: firebaseUser.email,
               photoURL: firebaseUser.photoURL,
+              isBlocked: false,
             });
           }
           setLoading(false);
@@ -87,5 +98,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-    

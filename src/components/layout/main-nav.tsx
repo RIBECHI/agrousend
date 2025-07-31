@@ -54,6 +54,8 @@ const bottomLevelNavItems = [
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
+const adminNavItem = { href: '/admin', label: 'Admin', icon: Shield };
+
 export function MainNav() {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -108,6 +110,19 @@ export function MainNav() {
         </Collapsible>
 
       <div className="flex-grow" />
+
+      {user?.role === 'admin' && (
+         <Button
+          asChild
+          variant={pathname.startsWith(adminNavItem.href) ? 'secondary' : 'ghost'}
+          className="w-full justify-start rounded-md"
+        >
+          <Link href={adminNavItem.href}>
+            <adminNavItem.icon className="mr-3 h-5 w-5" />
+            {adminNavItem.label}
+          </Link>
+        </Button>
+      )}
 
       {bottomLevelNavItems.map((item) => (
         <Button
