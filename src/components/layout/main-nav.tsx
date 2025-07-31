@@ -25,6 +25,7 @@ import {
   ClipboardList,
   Wheat,
   ListChecks,
+  ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,8 @@ const bottomLevelNavItems = [
 ];
 
 const adminNavItem = { href: '/admin', label: 'Admin', icon: Shield };
+const promoteNavItem = { href: '/promote', label: 'Promover para Admin', icon: ShieldCheck };
+
 
 export function MainNav() {
   const pathname = usePathname();
@@ -110,6 +113,19 @@ export function MainNav() {
         </Collapsible>
 
       <div className="flex-grow" />
+      
+      {user?.email === 'ribechi@gmail.com' && user?.role !== 'admin' && (
+         <Button
+          asChild
+          variant={pathname.startsWith(promoteNavItem.href) ? 'secondary' : 'ghost'}
+          className="w-full justify-start rounded-md text-primary"
+        >
+          <Link href={promoteNavItem.href}>
+            <promoteNavItem.icon className="mr-3 h-5 w-5" />
+            {promoteNavItem.label}
+          </Link>
+        </Button>
+      )}
 
       {user?.role === 'admin' && (
          <Button
