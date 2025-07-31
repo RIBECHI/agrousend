@@ -74,10 +74,7 @@
     "@types/react-leaflet": "^3.0.0",
     "@types/three": "^0.165.0",
     "genkit-cli": "^1.15.5",
-    "glob": "^11.0.0",
-    "inflight": "^1.0.6",
     "postcss": "^8",
-    "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
