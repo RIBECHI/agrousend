@@ -43,8 +43,13 @@ interface Listing {
   imageUrls: string[];
   createdAt: Timestamp;
   status?: 'active' | 'sold';
+  // Campos específicos da categoria
+  brand?: string;
   year?: number;
   hours?: number;
+  mileage?: number;
+  aptitude?: string;
+  subtype?: string;
 }
 
 export default function SellingPage() {
@@ -152,6 +157,7 @@ export default function SellingPage() {
   }
 
   const formattedPrice = (price: number) => {
+    if (price === 0) return 'Grátis';
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',

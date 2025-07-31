@@ -41,8 +41,13 @@ interface Listing {
   imageUrls: string[];
   createdAt: any;
   status?: 'active' | 'sold';
+  // Campos específicos da categoria
+  brand?: string;
   year?: number;
   hours?: number;
+  mileage?: number;
+  aptitude?: string;
+  subtype?: string;
 }
 
 
@@ -61,21 +66,32 @@ const navItems = [
   { href: '/market/buying', label: 'Compras', icon: ShoppingCart },
 ];
 
-const categories = ['Tratores', 'Sementes', 'Fertilizantes', 'Peças', 'Serviços', 'Outros'];
+const categories = ['Fazendas', 'Maquinas', 'Caminhoes', 'Implementos', 'Insumos', 'Graos'];
+const farmAptitudes = ['Agricultura', 'Pecuária', 'Mista', 'Reflorestamento'];
+const inputSubtypes = ['Sementes', 'Fertilizantes', 'Defensivos', 'Outros'];
+const grainSubtypes = ['Soja', 'Milho', 'Trigo', 'Café', 'Algodão', 'Outros'];
 
 export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing, onListingUpdated }: { isSheetOpen: boolean, setIsSheetOpen: (open: boolean) => void, editingListing?: Listing | null, onListingUpdated?: () => void }) => {
     const { user } = useAuth();
     const { toast } = useToast();
     
+    // Campos comuns
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
-    const [year, setYear] = useState('');
-    const [hours, setHours] = useState('');
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Campos específicos
+    const [brand, setBrand] = useState('');
+    const [year, setYear] = useState('');
+    const [hours, setHours] = useState('');
+    const [mileage, setMileage] = useState('');
+    const [aptitude, setAptitude] = useState('');
+    const [subtype, setSubtype] = useState('');
+
     const MAX_IMAGES = 5;
 
     // Location state
@@ -143,17 +159,36 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
         });
     };
 
+    const resetForm = useCallback(() => {
+        setTitle('');
+        setDescription('');
+        setPrice('');
+        setCategory('');
+        setYear('');
+        setHours('');
+        setMileage('');
+        setBrand('');
+        setAptitude('');
+        setSubtype('');
+        setSelectedState('');
+        setSelectedCity('');
+        setCities([]);
+        setImageFiles([]);
+        setImagePreviews([]);
+        setIsSubmitting(false);
+    }, []);
+
     useEffect(() => {
       if (isEditing && editingListing) {
+          // Preenche campos comuns
           setTitle(editingListing.title);
           setDescription(editingListing.description);
           setPrice(editingListing.price.toString());
           setCategory(editingListing.category);
-          setYear(editingListing.year?.toString() || '');
-          setHours(editingListing.hours?.toString() || '');
           setImagePreviews(editingListing.imageUrls);
           setImageFiles([]); // Clear old files on edit
           
+          // Preenche campos de localização
           const [city, state] = editingListing.location.split(', ');
           if (state) {
             const stateData = brazilianStates.find(s => s.sigla === state);
@@ -163,11 +198,19 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
             }
           }
           if(city) setSelectedCity(city);
+          
+          // Preenche campos específicos da categoria
+          setBrand(editingListing.brand || '');
+          setYear(editingListing.year?.toString() || '');
+          setHours(editingListing.hours?.toString() || '');
+          setMileage(editingListing.mileage?.toString() || '');
+          setAptitude(editingListing.aptitude || '');
+          setSubtype(editingListing.subtype || '');
 
       } else {
         resetForm();
       }
-    }, [editingListing, isEditing]);
+    }, [editingListing, isEditing, resetForm]);
 
 
     useEffect(() => {
@@ -185,7 +228,6 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
     const removeImage = useCallback((index: number) => {
         const previewToRemove = imagePreviews[index];
         
-        // If the preview is a local object URL, find the corresponding file and remove it.
         if (previewToRemove.startsWith('blob:')) {
             const fileIndex = imagePreviews.filter(p => p.startsWith('blob:')).indexOf(previewToRemove);
             if(fileIndex > -1) {
@@ -193,25 +235,9 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
             }
         }
         
-        // Always remove the preview.
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
 
     }, [imagePreviews]);
-
-    const resetForm = useCallback(() => {
-        setTitle('');
-        setDescription('');
-        setPrice('');
-        setCategory('');
-        setYear('');
-        setHours('');
-        setSelectedState('');
-        setSelectedCity('');
-        setCities([]);
-        setImageFiles([]);
-        setImagePreviews([]);
-        setIsSubmitting(false);
-    }, []);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -250,7 +276,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
             toast({
                 variant: "destructive",
                 title: "Campos obrigatórios",
-                description: "Todos os campos e pelo menos uma imagem são obrigatórios.",
+                description: "Título, Preço, Categoria, Localização e ao menos uma Imagem são obrigatórios.",
             });
             return;
         }
@@ -275,10 +301,14 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                 status: editingListing?.status || 'active',
             };
 
-            if (category === 'Tratores') {
-                if (year) listingData.year = parseInt(year, 10);
-                if (hours) listingData.hours = parseInt(hours, 10);
-            }
+            // Adiciona campos específicos baseados na categoria
+            if (brand) listingData.brand = brand;
+            if (year) listingData.year = parseInt(year);
+            if (subtype) listingData.subtype = subtype;
+            if (aptitude) listingData.aptitude = aptitude;
+            if (hours) listingData.hours = parseInt(hours);
+            if (mileage) listingData.mileage = parseInt(mileage);
+
 
             if(isEditing) {
               const docRef = doc(firestore, 'listings', editingListing.id);
@@ -305,6 +335,100 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
             });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const renderCategorySpecificFields = () => {
+        switch (category) {
+            case 'Fazendas':
+                return (
+                    <div className="space-y-1">
+                        <Label htmlFor="aptitude">Aptidão</Label>
+                        <Select value={aptitude} onValueChange={setAptitude}>
+                            <SelectTrigger><SelectValue placeholder="Selecione a aptidão" /></SelectTrigger>
+                            <SelectContent>
+                                {farmAptitudes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                );
+            case 'Maquinas':
+                return (
+                    <>
+                        <div className="space-y-1">
+                            <Label htmlFor="brand">Marca</Label>
+                            <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: John Deere" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div className="space-y-1">
+                                <Label htmlFor="year">Ano</Label>
+                                <Input id="year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ex: 2020" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="hours">Horas de uso</Label>
+                                <Input id="hours" type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Ex: 1500" />
+                            </div>
+                        </div>
+                    </>
+                );
+            case 'Caminhoes':
+                return (
+                    <>
+                        <div className="space-y-1">
+                            <Label htmlFor="brand">Marca</Label>
+                            <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Scania" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                             <div className="space-y-1">
+                                <Label htmlFor="year">Ano</Label>
+                                <Input id="year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ex: 2022" />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="mileage">Quilometragem</Label>
+                                <Input id="mileage" type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} placeholder="Ex: 80000" />
+                            </div>
+                        </div>
+                    </>
+                );
+            case 'Implementos':
+                return (
+                    <>
+                        <div className="space-y-1">
+                            <Label htmlFor="brand">Marca</Label>
+                            <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Tatu" />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="year">Ano</Label>
+                            <Input id="year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ex: 2023" />
+                        </div>
+                    </>
+                );
+            case 'Insumos':
+                 return (
+                    <div className="space-y-1">
+                        <Label htmlFor="subtype">Tipo de Insumo</Label>
+                        <Select value={subtype} onValueChange={setSubtype}>
+                            <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                            <SelectContent>
+                                {inputSubtypes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                );
+            case 'Graos':
+                 return (
+                    <div className="space-y-1">
+                        <Label htmlFor="subtype">Tipo de Grão</Label>
+                        <Select value={subtype} onValueChange={setSubtype}>
+                            <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+                            <SelectContent>
+                                {grainSubtypes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                );
+            default:
+                return null;
         }
     };
 
@@ -379,18 +503,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                         </div>
                     </div>
                     
-                    {category === 'Tratores' && (
-                        <div className="grid grid-cols-2 gap-4">
-                             <div className="space-y-1">
-                                <Label htmlFor="year">Ano</Label>
-                                <Input id="year" type="number" value={year} onChange={(e) => setYear(e.target.value)} placeholder="Ex: 2020" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="hours">Horas de uso</Label>
-                                <Input id="hours" type="number" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Ex: 1500" />
-                            </div>
-                        </div>
-                    )}
+                    {renderCategorySpecificFields()}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">

@@ -8,13 +8,14 @@ import { firestore } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy, Calendar, Clock } from 'lucide-react';
+import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy, Calendar, Clock, Tractor, Building, Truck, Crop, Package } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { capitalizeName } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface Listing {
   id: string;
@@ -27,8 +28,13 @@ interface Listing {
   location: string;
   imageUrls: string[];
   createdAt: any;
+  // Campos específicos da categoria
+  brand?: string;
   year?: number;
   hours?: number;
+  mileage?: number;
+  aptitude?: string;
+  subtype?: string;
 }
 
 export default function ListingDetailPage() {
@@ -78,17 +84,31 @@ export default function ListingDetailPage() {
   };
 
   const formattedPrice = (price: number | undefined) => {
-    if (!price) return 'R$ 0,00';
+    if (price === undefined) return 'A combinar';
+    if (price === 0) return 'Grátis';
     return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL',
     }).format(price);
   }
   
-  const formattedHours = (hours: number | undefined) => {
-    if (!hours) return '-';
-    return new Intl.NumberFormat('pt-BR').format(hours) + ' h';
+  const formattedNumber = (num: number | undefined) => {
+    if (num === undefined) return '-';
+    return new Intl.NumberFormat('pt-BR').format(num);
   }
+
+  const renderCategoryIcon = (category: string) => {
+    switch (category) {
+        case 'Fazendas': return <Building className="h-5 w-5" />;
+        case 'Maquinas': return <Tractor className="h-5 w-5" />;
+        case 'Caminhoes': return <Truck className="h-5 w-5" />;
+        case 'Implementos': return <Tractor className="h-5 w-5" />;
+        case 'Insumos': return <Package className="h-5 w-5" />;
+        case 'Graos': return <Crop className="h-5 w-5" />;
+        default: return <Tag className="h-5 w-5" />;
+    }
+  }
+
 
   if (isLoading) {
     return (
@@ -186,23 +206,44 @@ export default function ListingDetailPage() {
                         <h3 className="font-semibold text-lg">Detalhes</h3>
                         <div className="text-base text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-2">
                             <div className="flex items-center gap-2">
-                                <Tag className="h-5 w-5" />
+                                {renderCategoryIcon(listing.category)}
                                 <span>{listing.category}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <MapPin className="h-5 w-5" />
                                 <span>{listing.location}</span>
                             </div>
-                            {listing.category === 'Tratores' && listing.year && (
+                            {listing.subtype && (
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary">{listing.subtype}</Badge>
+                                </div>
+                            )}
+                            {listing.brand && (
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold">Marca:</span> {listing.brand}
+                                </div>
+                            )}
+                            {listing.year && (
                                 <div className="flex items-center gap-2">
                                     <Calendar className="h-5 w-5" />
                                     <span>Ano: {listing.year}</span>
                                 </div>
                             )}
-                            {listing.category === 'Tratores' && listing.hours && (
+                             {listing.aptitude && (
+                                <div className="flex items-center gap-2">
+                                     <span className="font-semibold">Aptidão:</span> {listing.aptitude}
+                                </div>
+                            )}
+                            {listing.hours && (
                                 <div className="flex items-center gap-2">
                                     <Clock className="h-5 w-5" />
-                                    <span>{formattedHours(listing.hours)}</span>
+                                    <span>{formattedNumber(listing.hours)} horas</span>
+                                </div>
+                            )}
+                             {listing.mileage && (
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-5 w-5" />
+                                    <span>{formattedNumber(listing.mileage)} km</span>
                                 </div>
                             )}
                             <div className="flex items-center gap-2 col-span-2">

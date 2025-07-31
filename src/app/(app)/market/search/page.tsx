@@ -30,7 +30,7 @@ interface Listing {
   createdAt: any;
 }
 
-const categories = ['Todos', 'Tratores', 'Sementes', 'Fertilizantes', 'Peças', 'Serviços', 'Outros'];
+const categories = ['Todas', 'Fazendas', 'Maquinas', 'Caminhoes', 'Implementos', 'Insumos', 'Graos'];
 const distances = ['50km', '100km', '200km', '500km', 'Qualquer'];
 
 export default function MarketSearchPage() {
@@ -42,7 +42,7 @@ export default function MarketSearchPage() {
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('Todos');
+  const [filterCategory, setFilterCategory] = useState('Todas');
   const [filterState, setFilterState] = useState('all');
   const [filterCity, setFilterCity] = useState('all');
   const [cities, setCities] = useState<string[]>([]);
@@ -82,7 +82,7 @@ export default function MarketSearchPage() {
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
         const matchesSearch = listing.title.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = filterCategory === 'Todos' || listing.category === filterCategory;
+        const matchesCategory = filterCategory === 'Todas' || listing.category === filterCategory;
         const locationString = listing.location.toLowerCase();
         
         const stateInfo = brazilianStates.find(s => s.sigla.toLowerCase() === filterState.toLowerCase());
