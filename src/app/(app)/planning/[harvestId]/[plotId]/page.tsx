@@ -9,7 +9,7 @@ import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, ser
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle, Pencil } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle, Pencil, Calculator } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -67,6 +67,12 @@ interface Item {
   unit: string;
 }
 
+// State for the form inputs, including the dose per hectare
+interface OperationInputFormState {
+    itemId: string;
+    dosePerHectare: number | '';
+}
+
 const operationTypes = ['Plantio', 'Pulverização', 'Adubação', 'Colheita', 'Outra'];
 
 const OperationIcon = ({ type }: { type: Operation['type']}) => {
@@ -83,7 +89,7 @@ export default function PlotOperationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { harvestId, plotId } = useParams() as { harvestId: string; plotId: string };
+  const { harvestId, plotId } = useParams<{ harvestId: string; plotId: string }>();
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -102,7 +108,7 @@ export default function PlotOperationsPage() {
   const [opDate, setOpDate] = useState<Date | undefined>();
   const [opDescription, setOpDescription] = useState('');
   const [opStatus, setOpStatus] = useState<'Planejada' | 'Concluída'>('Planejada');
-  const [opInputs, setOpInputs] = useState<Omit<AppliedInput, 'itemName' | 'unit'>[]>([]);
+  const [opInputs, setOpInputs] = useState<OperationInputFormState[]>([]);
 
 
   // Dialog state
@@ -173,13 +179,17 @@ export default function PlotOperationsPage() {
   }, []);
 
   const handleOpenSheet = (operation: Operation | null) => {
-    if (operation) {
+    if (operation && plot) {
         setEditingOperation(operation);
         setOpType(operation.type);
         setOpDate(operation.date.toDate());
         setOpDescription(operation.description);
         setOpStatus(operation.status);
-        setOpInputs(operation.inputs.map(i => ({ itemId: i.itemId, quantity: i.quantity })));
+        const plotArea = plot.area || 1; // Avoid division by zero
+        setOpInputs(operation.inputs.map(i => ({ 
+            itemId: i.itemId, 
+            dosePerHectare: plotArea > 0 ? (i.quantity / plotArea) : i.quantity
+        })));
     } else {
         resetForm();
     }
@@ -187,21 +197,21 @@ export default function PlotOperationsPage() {
   }
 
   const handleAddInput = () => {
-    setOpInputs(prev => [...prev, { itemId: '', quantity: 0 }]);
+    setOpInputs(prev => [...prev, { itemId: '', dosePerHectare: '' }]);
   }
   
   const handleRemoveInput = (index: number) => {
     setOpInputs(prev => prev.filter((_, i) => i !== index));
   }
 
-  const handleInputChange = (index: number, field: 'itemId' | 'quantity', value: string | number) => {
+  const handleInputChange = (index: number, field: 'itemId' | 'dosePerHectare', value: string | number) => {
     setOpInputs(prev => {
         const newInputs = [...prev];
         const currentInput = { ...newInputs[index] };
         if (field === 'itemId') {
             currentInput.itemId = value as string;
         } else {
-            currentInput.quantity = Number(value);
+            currentInput.dosePerHectare = value === '' ? '' : Number(value);
         }
         newInputs[index] = currentInput;
         return newInputs;
@@ -210,22 +220,26 @@ export default function PlotOperationsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !opType || !opDate || (opDescription.trim() === '' && opInputs.length === 0)) {
+    if (!user || !plot || !opType || !opDate || (opDescription.trim() === '' && opInputs.length === 0)) {
         toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo, data e pelo menos uma descrição ou insumo são obrigatórios.'});
         return;
     }
 
-    const validInputs = opInputs.filter(input => input.itemId && input.quantity > 0).map(input => {
-        const itemDetails = items.find(i => i.id === input.itemId);
-        return {
-            ...input,
-            itemName: itemDetails?.name || 'Desconhecido',
-            unit: itemDetails?.unit || 'un'
-        }
-    });
+    const validInputs = opInputs
+        .filter(input => input.itemId && (input.dosePerHectare || 0) > 0)
+        .map(input => {
+            const itemDetails = items.find(i => i.id === input.itemId);
+            const totalQuantity = (input.dosePerHectare || 0) * (plot.area || 0);
+            return {
+                itemId: input.itemId,
+                quantity: totalQuantity,
+                itemName: itemDetails?.name || 'Desconhecido',
+                unit: itemDetails?.unit || 'un'
+            }
+        });
 
     if (opInputs.length > 0 && validInputs.length !== opInputs.length) {
-        toast({ variant: 'destructive', title: 'Insumos inválidos', description: 'Preencha todos os campos dos insumos adicionados.'});
+        toast({ variant: 'destructive', title: 'Insumos inválidos', description: 'Preencha todos os campos dos insumos adicionados (Item e Dose).'});
         return;
     }
 
@@ -316,7 +330,7 @@ export default function PlotOperationsPage() {
               Adicionar Operação
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
+          <SheetContent className="w-full sm:max-w-lg">
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
                 <SheetHeader>
                     <SheetTitle>{isEditing ? 'Editar Operação' : 'Nova Operação'}</SheetTitle>
@@ -364,10 +378,17 @@ export default function PlotOperationsPage() {
                           <div className="space-y-3 mt-2">
                               {opInputs.map((input, index) => {
                                   const selectedItem = items.find(i => i.id === input.itemId);
+                                  const totalCalculated = (input.dosePerHectare || 0) * (plot?.area || 0);
                                   return (
-                                    <div key={index} className="flex items-end gap-2 p-3 border rounded-lg">
-                                        <div className="flex-1 space-y-2">
-                                            <Label htmlFor={`item-${index}`}>Item</Label>
+                                    <div key={index} className="flex flex-col gap-2 p-3 border rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor={`item-${index}`}>Insumo {index + 1}</Label>
+                                            <Button type="button" variant="ghost" size="icon" className="text-destructive h-6 w-6" onClick={() => handleRemoveInput(index)}>
+                                                <MinusCircle className="h-4 w-4"/>
+                                            </Button>
+                                        </div>
+                                        <div className='space-y-2'>
+                                            <Label className="text-xs">Item</Label>
                                             <Select value={input.itemId} onValueChange={(value) => handleInputChange(index, 'itemId', value)}>
                                                 <SelectTrigger id={`item-${index}`}><SelectValue placeholder="Selecione..." /></SelectTrigger>
                                                 <SelectContent>
@@ -375,20 +396,29 @@ export default function PlotOperationsPage() {
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                         <div className="w-2/5 space-y-2">
-                                            <Label htmlFor={`qty-${index}`}>Qtd. ({selectedItem?.unit || 'un'})</Label>
-                                            <Input 
-                                                id={`qty-${index}`} 
-                                                type="number"
-                                                value={input.quantity || ''}
-                                                onChange={(e) => handleInputChange(index, 'quantity', e.target.value)}
-                                                placeholder="0.00"
-                                                min="0"
-                                            />
+                                         <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`dose-${index}`} className="text-xs">Dose / ha ({selectedItem?.unit || 'un'})</Label>
+                                                <Input 
+                                                    id={`dose-${index}`} 
+                                                    type="number"
+                                                    value={input.dosePerHectare}
+                                                    onChange={(e) => handleInputChange(index, 'dosePerHectare', e.target.value)}
+                                                    placeholder="0.00"
+                                                    min="0"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor={`total-${index}`} className="text-xs">Total Calculado</Label>
+                                                <Input 
+                                                    id={`total-${index}`}
+                                                    value={totalCalculated > 0 ? totalCalculated.toFixed(2) : ''}
+                                                    readOnly
+                                                    disabled
+                                                    className="bg-muted"
+                                                />
+                                            </div>
                                          </div>
-                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveInput(index)}>
-                                            <MinusCircle className="h-5 w-5"/>
-                                        </Button>
                                     </div>
                                   )
                               })}
@@ -443,7 +473,7 @@ export default function PlotOperationsPage() {
                                             <p className="font-medium text-foreground">Insumos:</p>
                                             <ul className="list-disc list-inside text-muted-foreground">
                                                 {op.inputs.map((input, index) => (
-                                                    <li key={index}>{input.itemName}: {input.quantity} {input.unit}</li>
+                                                    <li key={index}>{input.itemName}: {input.quantity.toFixed(2)} {input.unit}</li>
                                                 ))}
                                             </ul>
                                         </div>
