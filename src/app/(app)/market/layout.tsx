@@ -81,6 +81,64 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
 
     const isEditing = !!editingListing;
 
+    const compressImage = async (file: File, quality = 0.7, maxSizeMB = 0.5): Promise<File> => {
+        const maxSize = maxSizeMB * 1024 * 1024;
+        if (file.size <= maxSize && file.type === 'image/jpeg') {
+            return file;
+        }
+
+        return new Promise((resolve, reject) => {
+            const image = new window.Image();
+            image.src = URL.createObjectURL(file);
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                if (!ctx) {
+                    return reject(new Error('Não foi possível obter o contexto do canvas.'));
+                }
+
+                let { width, height } = image;
+                const MAX_WIDTH_HEIGHT = 1280;
+                if (width > height) {
+                    if (width > MAX_WIDTH_HEIGHT) {
+                        height *= MAX_WIDTH_HEIGHT / width;
+                        width = MAX_WIDTH_HEIGHT;
+                    }
+                } else {
+                    if (height > MAX_WIDTH_HEIGHT) {
+                        width *= MAX_WIDTH_HEIGHT / height;
+                        height = MAX_WIDTH_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(image, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            if (blob.size > maxSize) {
+                                return reject(new Error(`A imagem é muito grande mesmo após a compressão (${(blob.size / 1024 / 1024).toFixed(2)}MB).`));
+                            }
+                            const newFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            resolve(newFile);
+                        } else {
+                            reject(new Error('Falha ao criar o blob da imagem.'));
+                        }
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            };
+            image.onerror = reject;
+        });
+    };
+
     useEffect(() => {
       if (isEditing && editingListing) {
           setTitle(editingListing.title);
@@ -88,6 +146,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
           setPrice(editingListing.price.toString());
           setCategory(editingListing.category);
           setImagePreviews(editingListing.imageUrls);
+          setImageFiles([]); // Clear old files on edit
           
           const [city, state] = editingListing.location.split(', ');
           if (state) {
@@ -102,7 +161,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
       } else {
         resetForm();
       }
-  }, [editingListing, isEditing]);
+    }, [editingListing, isEditing]);
 
 
     useEffect(() => {
@@ -118,9 +177,20 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
     }, [selectedState, isEditing, editingListing]);
 
     const removeImage = useCallback((index: number) => {
-        setImageFiles(prev => prev.filter((_, i) => i !== index));
+        const previewToRemove = imagePreviews[index];
+        
+        // If the preview is a local object URL, find the corresponding file and remove it.
+        if (previewToRemove.startsWith('blob:')) {
+            const fileIndex = imagePreviews.filter(p => p.startsWith('blob:')).indexOf(previewToRemove);
+            if(fileIndex > -1) {
+              setImageFiles(prev => prev.filter((_, i) => i !== fileIndex));
+            }
+        }
+        
+        // Always remove the preview.
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    }, []);
+
+    }, [imagePreviews]);
 
     const resetForm = useCallback(() => {
         setTitle('');
@@ -135,7 +205,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
         setIsSubmitting(false);
     }, []);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
             const totalImages = imagePreviews.length + files.length;
@@ -148,12 +218,21 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                 });
                 return;
             }
-
-            const newFiles = [...imageFiles, ...files];
-            setImageFiles(newFiles);
-
-            const newPreviewsFromFiles = files.map(file => URL.createObjectURL(file));
-            setImagePreviews(prev => [...prev, ...newPreviewsFromFiles]);
+            
+            try {
+                const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
+                const newFiles = [...imageFiles, ...compressedFiles];
+                setImageFiles(newFiles);
+    
+                const newPreviewsFromFiles = compressedFiles.map(file => URL.createObjectURL(file));
+                setImagePreviews(prev => [...prev, ...newPreviewsFromFiles]);
+            } catch (error: any) {
+                 toast({
+                    variant: "destructive",
+                    title: "Erro ao processar imagem",
+                    description: error.message || "Não foi possível comprimir a imagem.",
+                });
+            }
         }
     };
 
@@ -219,7 +298,10 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
 
     return (
         <Sheet open={isSheetOpen} onOpenChange={(open) => {
-            if (!open) resetForm();
+            if (!open) {
+                resetForm();
+                if (onListingUpdated) onListingUpdated();
+            };
             setIsSheetOpen(open);
         }}>
            {/* O SheetTrigger é gerenciado externamente agora */}
@@ -259,7 +341,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
                                 </div>
                              )}
                         </div>
-                        <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 2MB cada.</p>
+                        <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF até 0.5MB cada.</p>
 
                     </div>
                     <div className="space-y-1">

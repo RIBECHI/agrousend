@@ -326,7 +326,7 @@ export default function FeedPage() {
 
     const compressImage = async (file: File, quality = 0.7, maxSizeMB = 1): Promise<File> => {
         const maxSize = maxSizeMB * 1024 * 1024;
-        if (file.size <= maxSize) {
+        if (file.size <= maxSize && file.type === 'image/jpeg') {
             return file;
         }
 
@@ -343,7 +343,6 @@ export default function FeedPage() {
 
                 let { width, height } = image;
 
-                // Opcional: Redimensionar a imagem se for muito grande
                 const MAX_WIDTH_HEIGHT = 1920;
                 if (width > height) {
                     if (width > MAX_WIDTH_HEIGHT) {
@@ -365,8 +364,6 @@ export default function FeedPage() {
                     (blob) => {
                         if (blob) {
                             if (blob.size > maxSize) {
-                                // Se ainda for muito grande, tenta comprimir mais (recursivamente)
-                                // Isso é uma simplificação, idealmente você não usaria recursão aqui para evitar loops
                                 toast({
                                     variant: "destructive",
                                     title: "Compressão falhou",
@@ -680,5 +677,3 @@ export default function FeedPage() {
     </>
   );
 }
-
-    
