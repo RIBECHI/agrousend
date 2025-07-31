@@ -147,11 +147,21 @@ export default function PlotOperationsPage() {
     
     fetchInitialData();
     
-    const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`), where('userId', '==', user.uid));
+    // Note: The Firestore path seems incorrect for a sub-subcollection based on previous logic.
+    // Assuming 'operations' is a subcollection of 'harvests'. If it's under 'harvestPlots', the path would be different.
+    // Let's assume the path is /harvests/{harvestId}/operations/{operationId} for simplicity, and plotId is a field.
+    // If it's truly nested, rules need to reflect that.
+    // For now, assuming direct subcollection: /harvests/{harvestId}/operations
+    // The previous implementation used /harvests/{harvestId}/harvestPlots/{plotId}/operations, which is very nested.
+    // Let's stick to the existing structure.
+    const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`));
     const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
         let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
         fetchedOps.sort((a, b) => b.date.toMillis() - a.date.toMillis());
         setOperations(fetchedOps);
+    }, (error) => {
+        console.error("Error fetching operations: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao carregar operações', description: 'Verifique as permissões do Firestore.' });
     });
 
     const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid));
@@ -245,7 +255,6 @@ export default function PlotOperationsPage() {
     setIsSubmitting(true);
     try {
         const opData: any = {
-            userId: user.uid,
             type: opType,
             date: Timestamp.fromDate(opDate),
             description: opDescription,
@@ -255,13 +264,16 @@ export default function PlotOperationsPage() {
 
         if (isEditing && editingOperation) {
             const opDocRef = doc(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`, editingOperation.id);
-            // Ensure userId is not stripped on update
+            // Ensure userId is preserved on update
             opData.userId = editingOperation.userId; 
             await updateDoc(opDocRef, opData);
             toast({ title: 'Sucesso!', description: 'Operação atualizada.'});
         } else {
+            // Add userId on creation
+            opData.userId = user.uid;
+            opData.createdAt = serverTimestamp();
             const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
-            await addDoc(operationsCollection, { ...opData, createdAt: serverTimestamp() });
+            await addDoc(operationsCollection, opData);
             toast({ title: 'Sucesso!', description: 'Operação registrada.'});
         }
         
