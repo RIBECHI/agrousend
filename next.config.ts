@@ -22,16 +22,6 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     unoptimized: false,
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.externals.push('node:fs');
-    }
-    config.module.rules.push({
-      test: /\.(bin)$/i,
-      type: 'asset/resource',
-    })
-    return config
-  },
 };
 
 export default nextConfig;
