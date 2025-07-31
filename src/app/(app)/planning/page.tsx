@@ -18,15 +18,22 @@ interface Harvest {
 }
 
 interface HarvestPlot {
-    id: string; // The subcollection document ID
-    plotId: string; // The original plot document ID from farmPlots
+    id: string; 
+    plotId: string;
     name: string;
     culture: string;
-    // We will add harvestId and harvestName during processing
 }
 
 interface HarvestWithPlots extends Harvest {
     plots: HarvestPlot[];
+}
+
+interface FarmPlot {
+  id: string;
+  name: string;
+  area: number;
+  culture: string;
+  userId: string;
 }
 
 export default function PlanningPage() {
@@ -41,7 +48,6 @@ export default function PlanningPage() {
         return;
     }
 
-    // This listener will react to changes in harvests (e.g., new harvest added)
     const harvestsCollection = collection(firestore, 'harvests');
     const harvestsQuery = query(harvestsCollection, where('userId', '==', user.uid));
     
@@ -55,40 +61,23 @@ export default function PlanningPage() {
                 setIsLoading(false);
                 return;
             }
+            
+            const harvestPromises = harvestsData.map(async (harvest) => {
+                const harvestPlotsCollection = collection(firestore, `harvests/${harvest.id}/harvestPlots`);
+                const plotsSnapshot = await getDocs(query(harvestPlotsCollection, where('userId', '==', user.uid)));
+                const plots = plotsSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                } as HarvestPlot));
 
-            // Efficiently fetch all plots for all harvests in a single query
-            const harvestPlotsGroup = collectionGroup(firestore, 'harvestPlots');
-            const plotsQuery = query(harvestPlotsGroup, where('userId', '==', user.uid));
-            const plotsSnapshot = await getDocs(plotsQuery);
-
-            const allPlots = plotsSnapshot.docs.map(plotDoc => {
-                const data = plotDoc.data();
-                const harvestId = plotDoc.ref.parent.parent!.id; // Extract harvestId from the path
                 return {
-                    ...data,
-                    id: plotDoc.id,
-                    harvestId: harvestId,
-                } as HarvestPlot & { harvestId: string };
+                    ...harvest,
+                    plots: plots,
+                };
             });
 
-            // Group plots by harvestId
-            const plotsByHarvest = allPlots.reduce((acc, plot) => {
-                const { harvestId } = plot;
-                if (!acc[harvestId]) {
-                    acc[harvestId] = [];
-                }
-                acc[harvestId].push(plot);
-                return acc;
-            }, {} as Record<string, HarvestPlot[]>);
+            let combinedData = await Promise.all(harvestPromises);
 
-
-            // Combine harvests with their plots
-            let combinedData = harvestsData.map(harvest => ({
-                ...harvest,
-                plots: plotsByHarvest[harvest.id] || [],
-            }));
-
-            // Sort harvests by most recent start date
             combinedData.sort((a, b) => b.startDate.toMillis() - a.startDate.toMillis());
 
             setHarvestsWithPlots(combinedData);
