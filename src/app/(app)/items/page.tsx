@@ -64,11 +64,12 @@ export default function ItemsPage() {
     }
 
     const itemsCollection = collection(firestore, 'items');
-    const q = query(itemsCollection, where('userId', '==', user.uid), orderBy('name', 'asc'));
+    const q = query(itemsCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+      let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+      fetchedItems.sort((a, b) => a.name.localeCompare(b.name));
       setItems(fetchedItems);
       setIsLoading(false);
     }, (error) => {

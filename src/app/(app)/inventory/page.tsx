@@ -60,10 +60,11 @@ export default function InventoryPage() {
       return;
     }
     const itemsCollection = collection(firestore, 'items');
-    const q = query(itemsCollection, where('userId', '==', user.uid), orderBy('name', 'asc'));
+    const q = query(itemsCollection, where('userId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+      let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+      fetchedItems.sort((a,b) => a.name.localeCompare(b.name));
       setItems(fetchedItems);
       setIsLoadingItems(false);
     });
@@ -78,19 +79,24 @@ export default function InventoryPage() {
       return;
     }
     const logsCollection = collection(firestore, 'inventoryLogs');
-    // CORREÇÃO: Removido o orderBy para evitar a necessidade de um índice composto.
-    const q = query(logsCollection, where('userId', '==', user.uid));
+    const q = query(logsCollection, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let fetchedLogs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as InventoryLog));
-      // CORREÇÃO: Ordenação feita no lado do cliente.
-      fetchedLogs.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       setLogs(fetchedLogs);
+      setIsLoadingLogs(false);
+    }, (error) => {
+      console.error("Erro ao buscar logs de inventário: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar histórico",
+        description: "A consulta requer um índice. Verifique o console do navegador para o link de criação.",
+      });
       setIsLoadingLogs(false);
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, toast]);
 
   const resetForm = useCallback(() => {
     setSelectedItemId('');
