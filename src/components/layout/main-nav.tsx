@@ -114,7 +114,7 @@ export function MainNav() {
 
       <div className="flex-grow" />
       
-      {user?.email === 'ribechi@gmail.com' && user?.role !== 'admin' && (
+      {user?.email === 'desafyo@gmail.com' && user?.role !== 'admin' && (
          <Button
           asChild
           variant={pathname.startsWith(promoteNavItem.href) ? 'secondary' : 'ghost'}

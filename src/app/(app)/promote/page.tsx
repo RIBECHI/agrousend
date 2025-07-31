@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Loader, ShieldCheck } from 'lucide-react';
 
-const ADMIN_EMAIL = 'ribechi@gmail.com';
+const ADMIN_EMAIL = 'desafyo@gmail.com';
 
 export default function PromotePage() {
   const { user } = useAuth();
