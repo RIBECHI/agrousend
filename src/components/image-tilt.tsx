@@ -6,6 +6,7 @@ import * as THREE from 'three';
 
 interface ImageTiltProps {
   imageUrl: string;
+  ['data-ai-hint']?: string;
 }
 
 const ImageTilt: React.FC<ImageTiltProps> = ({ imageUrl }) => {
