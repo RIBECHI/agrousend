@@ -120,8 +120,8 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u) => (
-                    <TableRow key={u.uid}>
+                  {users.map((u, index) => (
+                    <TableRow key={`${u.uid}-${index}`}>
                       <TableCell className="font-medium">{capitalizeName(u.displayName)}</TableCell>
                       <TableCell>{u.email}</TableCell>
                       <TableCell>{getRoleDisplayName(u.role)}</TableCell>
