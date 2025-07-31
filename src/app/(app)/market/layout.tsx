@@ -317,7 +317,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
               if(onListingUpdated) onListingUpdated();
             } else {
               listingData.userId = user.uid;
-              listingData.authorName = user.displayName;
+              listingData.authorName = user.displayName || '';
               listingData.createdAt = serverTimestamp();
               await addDoc(collection(firestore, 'listings'), listingData);
               toast({ title: "Sucesso!", description: "Anúncio publicado." });
