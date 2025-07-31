@@ -106,7 +106,7 @@ export default function ManageHarvestPage() {
             ...doc.data() 
         } as HarvestPlot));
         setHarvestPlots(fetchedPlots);
-    }, (error) => {
+    }, (error: any) => {
         console.error("Erro ao buscar talhões da safra: ", error);
         toast({ variant: "destructive", title: "Erro ao carregar talhões da safra", description: "Verifique suas permissões no Firestore."})
     });
