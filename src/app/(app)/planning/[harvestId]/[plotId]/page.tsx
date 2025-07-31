@@ -89,7 +89,7 @@ export default function PlotOperationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { harvestId, plotId } = useParams<{ harvestId: string; plotId: string }>();
+  const { harvestId, plotId } = useParams<{ harvestId: string; plotId: string; }>();
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -118,9 +118,7 @@ export default function PlotOperationsPage() {
   useEffect(() => {
     if (!user || !harvestId || !plotId) return;
 
-    let unsubscribes: (() => void)[] = [];
-
-    const fetchInitialDataAndSubscribe = async () => {
+    const fetchInitialData = async () => {
         setIsLoading(true);
         try {
             const harvestDocRef = doc(firestore, 'harvests', harvestId);
@@ -138,23 +136,7 @@ export default function PlotOperationsPage() {
                 throw new Error("Talhão não encontrado ou acesso negado.");
             }
             setPlot({ id: plotDoc.id, ...plotDoc.data() as Omit<FarmPlot, 'id'> });
-
-            const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`), where('userId', '==', user.uid));
-            const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
-                let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
-                fetchedOps.sort((a, b) => b.date.toMillis() - a.date.toMillis());
-                setOperations(fetchedOps);
-            });
-            unsubscribes.push(opsUnsubscribe);
-
-            const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid));
-            const itemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
-                let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
-                fetchedItems.sort((a, b) => a.name.localeCompare(b.name));
-                setItems(fetchedItems);
-            });
-            unsubscribes.push(itemsUnsubscribe);
-
+            
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Erro ao carregar dados', description: err.message });
             router.push('/planning');
@@ -162,10 +144,27 @@ export default function PlotOperationsPage() {
             setIsLoading(false);
         }
     };
-
-    fetchInitialDataAndSubscribe();
     
-    return () => unsubscribes.forEach(unsub => unsub());
+    fetchInitialData();
+    
+    const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`), where('userId', '==', user.uid));
+    const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
+        let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
+        fetchedOps.sort((a, b) => b.date.toMillis() - a.date.toMillis());
+        setOperations(fetchedOps);
+    });
+
+    const itemsQuery = query(collection(firestore, 'items'), where('userId', '==', user.uid));
+    const itemsUnsubscribe = onSnapshot(itemsQuery, (snapshot) => {
+        let fetchedItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Item));
+        fetchedItems.sort((a, b) => a.name.localeCompare(b.name));
+        setItems(fetchedItems);
+    });
+
+    return () => {
+        opsUnsubscribe();
+        itemsUnsubscribe();
+    }
   }, [user, harvestId, plotId, router, toast]);
   
   const resetForm = useCallback(() => {
@@ -245,7 +244,7 @@ export default function PlotOperationsPage() {
 
     setIsSubmitting(true);
     try {
-        const opData = {
+        const opData: any = {
             userId: user.uid,
             type: opType,
             date: Timestamp.fromDate(opDate),
@@ -256,6 +255,8 @@ export default function PlotOperationsPage() {
 
         if (isEditing && editingOperation) {
             const opDocRef = doc(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`, editingOperation.id);
+            // Ensure userId is not stripped on update
+            opData.userId = editingOperation.userId; 
             await updateDoc(opDocRef, opData);
             toast({ title: 'Sucesso!', description: 'Operação atualizada.'});
         } else {
