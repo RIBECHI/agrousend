@@ -171,7 +171,7 @@ export default function InventoryPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Controle de Estoque</h1>
+        <h1 className="text-2xl font-bold text-primary">Controle de Estoque</h1>
          <div className="flex gap-2">
              <Button variant="outline" className="text-red-500 border-red-500 hover:bg-red-500 hover:text-white" onClick={() => handleOpenSheet('out')}>
                 <ArrowDownCircle className="mr-2" />

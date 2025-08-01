@@ -111,7 +111,7 @@ export default function PlanningPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Wheat className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">Planejamento Agrícola</h1>
+        <h1 className="text-2xl font-bold text-primary">Planejamento Agrícola</h1>
       </div>
        <CardDescription>
         Selecione uma safra e um talhão para ver e adicionar operações como plantio, pulverizações e colheita.

@@ -219,7 +219,7 @@ export default function ItemsPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Cadastro de Insumos</h1>
+        <h1 className="text-2xl font-bold text-primary">Cadastro de Insumos</h1>
         <Button onClick={() => handleOpenSheet(null)}>
             <PlusCircle className="mr-2" />
             Cadastrar Item

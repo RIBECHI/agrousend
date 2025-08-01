@@ -209,7 +209,7 @@ export default function EventsPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Agenda de Eventos</h1>
+        <h1 className="text-2xl font-bold text-primary">Agenda de Eventos</h1>
         <Sheet open={isSheetOpen} onOpenChange={(open) => {
             if(!open) resetForm();
             setIsSheetOpen(open);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -40,7 +41,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Wifi className="h-8 w-8 text-primary" />
-        <h1 className="text-2xl font-bold">Diagnóstico de Rede</h1>
+        <h1 className="text-2xl font-bold text-primary">Diagnóstico de Rede</h1>
       </div>
       <Card>
         <CardHeader>

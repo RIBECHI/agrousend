@@ -180,7 +180,7 @@ export default function HarvestsPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestão de Safras</h1>
+        <h1 className="text-2xl font-bold text-primary">Gestão de Safras</h1>
         <Sheet open={isSheetOpen} onOpenChange={(open) => {
             if(!open) resetForm();
             setIsSheetOpen(open);
