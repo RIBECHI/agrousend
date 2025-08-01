@@ -1,102 +1,96 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
   
     function isUserAuthenticated() {
-        return request.auth != null;
+      return request.auth != null;
     }
     
-    function isOwner(resource) {
-        return request.auth.uid == resource.data.userId;
+    function isOwner(resourceId) {
+      return request.auth.uid == resourceId;
+    }
+    
+    function isOwnerOfDoc(docName) {
+      return request.auth.uid == get(/databases/$(database)/documents/$(docName)).data.userId;
     }
 
     match /users/{userId} {
-      allow read;
-      allow write: if request.auth.uid == userId;
+      allow read, write: if isUserAuthenticated() && isOwner(userId);
     }
-
+    
     match /posts/{postId} {
-      allow read: if isUserAuthenticated();
-      allow create, update, delete: if isOwner(request.resource);
-        
-      match /comments/{commentId} {
         allow read: if isUserAuthenticated();
-        allow create: if isUserAuthenticated();
-      }
-    }
-
-    match /events/{eventId} {
-      allow read: if isUserAuthenticated();
-      allow create: if isOwner(request.resource);
-      allow delete: if isOwner(resource);
-    }
-    
-    match /farmPlots/{plotId} {
-        allow read, write, delete: if isOwner(resource);
-        allow create: if isOwner(request.resource);
-    }
-    
-    match /harvests/{harvestId} {
-        allow read, write, delete: if isOwner(resource);
-        allow create: if isOwner(request.resource);
+        allow create: if isUserAuthenticated() && isOwner(request.resource.data.authorId);
+        allow update, delete: if isUserAuthenticated() && isOwnerOfDoc('posts/' + postId);
         
-        match /harvestPlots/{plotId} {
-            allow read, delete: if isOwner(resource);
-            allow create: if isOwner(request.resource);
-
-            match /operations/{opId} {
-                 allow read, write, delete: if isOwner(resource);
-                 allow create: if isOwner(request.resource);
-            }
-        }
-    }
-    
-    match /items/{itemId} {
-        allow read, write, delete: if isOwner(resource);
-        allow create: if isOwner(request.resource);
-    }
-    
-    match /inventoryLogs/{logId} {
-        allow read: if isOwner(resource);
-        allow create: if isOwner(request.resource);
-    }
-    
-    match /machinery/{machineId} {
-        allow read, write, delete: if isOwner(resource);
-        allow create: if isOwner(request.resource);
-
-        match /maintenances/{maintenanceId} {
-            allow read, write, delete: if isOwner(resource);
-            allow create: if isOwner(request.resource);
-        }
-    }
-    
-    match /livestockLots/{lotId} {
-        allow read, write, delete: if isOwner(resource);
-        allow create: if isOwner(request.resource);
-    }
-
-    match /listings/{listingId} {
-      allow read: if isUserAuthenticated();
-      allow create: if isOwner(request.resource);
-      allow update, delete: if isOwner(resource);
-    }
-
-    match /forumTopics/{topicId} {
-        allow read: if isUserAuthenticated();
-        allow create: if isOwner(request.resource);
-        allow update: if isOwner(resource); // For updating replyCount
-        allow delete: if isOwner(resource);
-
-        match /replies/{replyId} {
+        match /comments/{commentId} {
             allow read: if isUserAuthenticated();
-            allow create: if isUserAuthenticated();
+            allow create: if isUserAuthenticated() && isOwner(request.resource.data.authorId);
+            allow update, delete: if isUserAuthenticated() && isOwnerOfDoc('posts/' + postId + '/comments/' + commentId);
         }
     }
 
     match /chats/{chatId}/messages/{messageId} {
-      allow read, create: if isUserAuthenticated() && chatId.split('_').includes(request.auth.uid);
+      allow read, write: if isUserAuthenticated() && (request.auth.uid in chatId.split('_'));
+    }
+
+    match /events/{eventId} {
+        allow read: if isUserAuthenticated();
+        allow create: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+        allow delete: if isUserAuthenticated() && isOwnerOfDoc('events/' + eventId);
+    }
+
+    match /farmPlots/{plotId} {
+        allow read, create, delete: if isUserAuthenticated() && isOwner(request.auth.uid);
+    }
+
+    match /harvests/{harvestId} {
+        allow read, create, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+        allow update: if isUserAuthenticated() && isOwnerOfDoc('harvests/' + harvestId);
+
+        match /harvestPlots/{harvestPlotId} {
+           allow read, create, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+           allow update: if isUserAuthenticated() && isOwnerOfDoc('harvests/' + harvestId + '/harvestPlots/' + harvestPlotId);
+
+            match /operations/{operationId} {
+                allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+            }
+        }
+    }
+    
+     match /items/{itemId} {
+        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+    }
+
+    match /inventoryLogs/{logId} {
+       allow read, create: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+    }
+    
+    match /machinery/{machineId} {
+        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+        
+        match /maintenances/{maintenanceId} {
+           allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+        }
+    }
+    
+    match /listings/{listingId} {
+      allow read: if isUserAuthenticated();
+      allow create, update, delete: if isUserAuthenticated() && isOwnerOfDoc('listings/' + listingId);
+    }
+
+    match /livestockLots/{lotId} {
+      allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+      
+      match /animals/{animalId} {
+        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+      }
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

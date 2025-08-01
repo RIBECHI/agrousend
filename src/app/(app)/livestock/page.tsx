@@ -228,7 +228,7 @@ export default function LivestockPage() {
                 </CardContent>
                 <CardFooter>
                     <Button asChild variant="outline" className="w-full">
-                        <Link href={`/livestock`}>
+                        <Link href={`/livestock/${lot.id}`}>
                             Gerenciar Lote
                         </Link>
                     </Button>
