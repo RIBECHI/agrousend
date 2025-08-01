@@ -1,127 +1,121 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default: Deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
     // Users:
-    // read: Any authenticated user can read public profiles.
-    // create, update: Only the user themselves can create/update their profile.
+    // 1. Logged-in users can read any profile (for chat, profile pages)
+    // 2. Users can only create, update and delete their own profile
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth.uid == userId;
-      // delete: Deleting a user document is handled by a backend function or manually.
+      allow create, update, delete: if isOwner(userId);
     }
 
-    // Posts:
-    // read: Any authenticated user can read posts.
-    // create, update: User can only create/update their own posts.
-    // delete: User can only delete their own posts.
+    // Posts & Comments:
+    // 1. Any logged-in user can read all posts and comments.
+    // 2. Users can create posts and comments.
+    // 3. Users can only update or delete their OWN posts and comments.
     match /posts/{postId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth.uid == request.resource.data.authorId;
-      allow delete: if request.auth.uid == resource.data.authorId;
-    }
+      allow create: if isOwner(request.resource.data.authorId);
+      allow update, delete: if isOwner(resource.data.authorId);
 
-    // Comments (subcollection of posts):
-    // read: Any authenticated user can read comments.
-    // create: Any authenticated user can create a comment.
-    // delete: Only the comment author can delete it.
-    match /posts/{postId}/comments/{commentId} {
+      match /comments/{commentId} {
         allow read: if request.auth != null;
-        allow create: if request.auth.uid == request.resource.data.authorId;
-        allow delete: if request.auth.uid == resource.data.authorId;
-    }
-
-    // Chats:
-    // read, write: Only users involved in the chat can access it.
-    // The chat ID is expected to be formatted as 'uid1_uid2' sorted alphabetically.
-    match /chats/{chatId}/{document=**} {
-       allow read, write: if request.auth.uid in chatId.split('_');
+        allow create: if isOwner(request.resource.data.authorId);
+        allow update, delete: if isOwner(resource.data.authorId);
+      }
     }
 
     // Events:
-    // read: Any authenticated user can read events.
-    // create, update, delete: Only the user who created the event can manage it.
+    // 1. Any logged-in user can read events.
+    // 2. Users can create events.
+    // 3. Users can only delete their own events.
     match /events/{eventId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth.uid == request.resource.data.userId;
-      allow delete: if request.auth.uid == resource.data.userId;
-    }
-
-    // Farm Plots (Talhões)
-    // read, create, update, delete: Only the owner user can manage their plots.
-    match /farmPlots/{plotId} {
-       allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
+        allow read: if request.auth != null;
+        allow create: if isOwner(request.resource.data.userId);
+        allow delete: if isOwner(resource.data.userId);
     }
     
-    // Harvests (Safras)
-    // read, create, update, delete: Only the owner can manage their harvests.
-    match /harvests/{harvestId} {
-       allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Harvest Plots (Subcollection of Harvests)
-    // read, create, delete: Only the owner can manage which plots are in their harvest.
-    match /harvests/{harvestId}/harvestPlots/{harvestPlotId} {
-        allow read, create, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Operations (Subcollection of Harvest Plots)
-    // read, create, update, delete: Only the owner can manage operations.
-    match /harvests/{harvestId}/harvestPlots/{plotId}/operations/{opId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-    
-    // Items (Insumos)
-    // read, create, update, delete: Only the owner can manage their items.
-    match /items/{itemId} {
-       allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Inventory Logs
-    // read, create: Only the owner can manage their inventory logs.
-    match /inventoryLogs/{logId} {
-        allow read, create: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Machinery
-    // read, create, update, delete: Only the owner can manage their machinery.
-    match /machinery/{machineId} {
-        allow read, create, update, delete: if request.auth.uid == request.resource.data.userId;
-    }
-
-    // Forum Topics
-    // read: Any authenticated user.
-    // create, update: The author of the topic.
-    // delete: The author of the topic.
+    // Forum Topics & Replies:
+    // 1. Any logged-in user can read all topics and replies.
+    // 2. Users can create topics and replies.
+    // 3. Users can only update or delete their OWN topics and replies.
     match /forumTopics/{topicId} {
+      allow read: if request.auth != null;
+      allow create, update: if isOwner(request.resource.data.authorId);
+      allow delete: if isOwner(resource.data.authorId);
+
+      match /replies/{replyId} {
         allow read: if request.auth != null;
-        allow create, update: if request.auth.uid == request.resource.data.authorId;
-        allow delete: if request.auth.uid == resource.data.authorId;
+        allow create: if isOwner(request.resource.data.authorId);
+        allow update, delete: if isOwner(resource.data.authorId);
+      }
+    }
+    
+    // Chat Messages:
+    // 1. Users can only read/write messages in chats they are part of.
+    // Chat ID is formatted as: sortedUID1_sortedUID2
+    match /chats/{chatId}/messages/{messageId} {
+        allow read, write: if request.auth != null && request.auth.uid in chatId.split('_');
     }
 
-    // Forum Replies
-    // read, create: Any authenticated user.
-    // delete: The author of the reply.
-    match /forumTopics/{topicId}/replies/{replyId} {
-        allow read, create: if request.auth.uid == request.resource.data.authorId;
-        allow delete: if request.auth.uid == resource.data.authorId;
+    // Farm Plots:
+    // Users can only manage their own farm plots.
+    match /farmPlots/{plotId} {
+        allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
     }
 
-    // Marketplace Listings
-    // read: Any authenticated user.
-    // create, update: The listing author.
-    // delete: The listing author.
+    // Machinery:
+    // Users can only manage their own machinery.
+    match /machinery/{machineId} {
+        allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+    }
+    
+    // Items (Insumos):
+    // Users can only manage their own items.
+    match /items/{itemId} {
+        allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+    }
+
+    // Inventory Logs:
+    // Users can only create logs for their own account, and only read their own logs.
+    match /inventoryLogs/{logId} {
+        allow read: if isOwner(resource.data.userId);
+        allow create: if isOwner(request.resource.data.userId);
+        allow update, delete: if false; // Logs should be immutable
+    }
+
+    // Harvests and their subcollections:
+    // Users can only manage their own harvests and related data.
+    match /harvests/{harvestId} {
+        allow read, create, update, delete: if isOwner(resource.data.userId) || isOwner(request.resource.data.userId);
+        
+        // Harvest Plots (the link between a harvest and a farm plot)
+        match /harvestPlots/{harvestPlotId} {
+            // Check if the user owns the parent harvest document
+            allow read, create, update, delete: if get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
+            
+            // Operations within a specific plot for a specific harvest
+            match /operations/{operationId} {
+               allow read, create, update, delete: if get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
+            }
+        }
+    }
+    
+     // Listings (Marketplace):
+    // 1. Any logged-in user can read all listings.
+    // 2. Users can create listings.
+    // 3. Users can only update or delete their OWN listings.
     match /listings/{listingId} {
-        allow read: if request.auth != null;
-        allow create, update: if request.auth.uid == request.resource.data.userId;
-        allow delete: if request.auth.uid == resource.data.userId;
+      allow read: if request.auth != null;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if isOwner(resource.data.userId);
     }
   }
 }
