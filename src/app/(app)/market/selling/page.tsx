@@ -47,6 +47,7 @@ interface Listing {
   brand?: string;
   year?: number;
   hours?: number;
+  hectares?: number;
   mileage?: number;
   aptitude?: string;
   subtype?: string;

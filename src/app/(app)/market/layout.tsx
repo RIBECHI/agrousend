@@ -45,6 +45,7 @@ interface Listing {
   brand?: string;
   year?: number;
   hours?: number;
+  hectares?: number;
   mileage?: number;
   aptitude?: string;
   subtype?: string;
@@ -88,6 +89,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
     const [brand, setBrand] = useState('');
     const [year, setYear] = useState('');
     const [hours, setHours] = useState('');
+    const [hectares, setHectares] = useState('');
     const [mileage, setMileage] = useState('');
     const [aptitude, setAptitude] = useState('');
     const [subtype, setSubtype] = useState('');
@@ -166,6 +168,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
         setCategory('');
         setYear('');
         setHours('');
+        setHectares('');
         setMileage('');
         setBrand('');
         setAptitude('');
@@ -203,6 +206,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
           setBrand(editingListing.brand || '');
           setYear(editingListing.year?.toString() || '');
           setHours(editingListing.hours?.toString() || '');
+          setHectares(editingListing.hectares?.toString() || '');
           setMileage(editingListing.mileage?.toString() || '');
           setAptitude(editingListing.aptitude || '');
           setSubtype(editingListing.subtype || '');
@@ -307,6 +311,7 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
             if (subtype) listingData.subtype = subtype;
             if (aptitude) listingData.aptitude = aptitude;
             if (hours) listingData.hours = parseInt(hours);
+            if (hectares) listingData.hectares = parseInt(hectares);
             if (mileage) listingData.mileage = parseInt(mileage);
 
 
@@ -342,14 +347,20 @@ export const CreateListingSheet = ({ isSheetOpen, setIsSheetOpen, editingListing
         switch (category) {
             case 'Fazendas':
                 return (
-                    <div className="space-y-1">
-                        <Label htmlFor="aptitude">Aptidão</Label>
-                        <Select value={aptitude} onValueChange={setAptitude}>
-                            <SelectTrigger><SelectValue placeholder="Selecione a aptidão" /></SelectTrigger>
-                            <SelectContent>
-                                {farmAptitudes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="aptitude">Aptidão</Label>
+                            <Select value={aptitude} onValueChange={setAptitude}>
+                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                    {farmAptitudes.map(item => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-1">
+                            <Label htmlFor="hectares">Hectares (ha)</Label>
+                            <Input id="hectares" type="number" value={hectares} onChange={(e) => setHectares(e.target.value)} placeholder="Ex: 500" />
+                        </div>
                     </div>
                 );
             case 'Maquinas':

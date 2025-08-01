@@ -8,7 +8,7 @@ import { firestore } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy, Calendar, Clock, Tractor, Building, Truck, Crop, Package } from 'lucide-react';
+import { Loader, ArrowLeft, MapPin, Tag, User, MessageSquare, Copy, Calendar, Clock, Tractor, Building, Truck, Crop, Package, LandPlot } from 'lucide-react';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -32,6 +32,7 @@ interface Listing {
   brand?: string;
   year?: number;
   hours?: number;
+  hectares?: number;
   mileage?: number;
   aptitude?: string;
   subtype?: string;
@@ -233,6 +234,12 @@ export default function ListingDetailPage() {
                              {listing.aptitude && (
                                 <div className="flex items-center gap-2">
                                      <span className="font-semibold">Aptidão:</span> {listing.aptitude}
+                                </div>
+                            )}
+                             {listing.hectares && (
+                                <div className="flex items-center gap-2">
+                                     <LandPlot className="h-5 w-5" />
+                                     <span>{formattedNumber(listing.hectares)} ha</span>
                                 </div>
                             )}
                             {listing.hours && (
