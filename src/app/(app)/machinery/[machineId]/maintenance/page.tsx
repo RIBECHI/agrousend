@@ -65,8 +65,8 @@ export default function MachineMaintenancePage() {
   const router = useRouter();
   const { toast } = useToast();
   const params = useParams();
-  const machineId = params.machineId as string;
-
+  
+  const [machineId, setMachineId] = useState<string | null>(null);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +88,13 @@ export default function MachineMaintenancePage() {
   // Dialog state
   const [maintToDelete, setMaintToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  useEffect(() => {
+    if (params.machineId && typeof params.machineId === 'string') {
+        setMachineId(params.machineId);
+    }
+  }, [params.machineId]);
+
 
   useEffect(() => {
     if (!user || !machineId) return;
@@ -153,7 +160,7 @@ export default function MachineMaintenancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !maintType || !maintDate) {
+    if (!user || !machineId || !maintType || !maintDate) {
         toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo e data são obrigatórios.'});
         return;
     }
