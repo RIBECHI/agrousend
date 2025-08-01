@@ -2,93 +2,101 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    function isUserAuthenticated() {
+        return request.auth != null;
+    }
+    
+    function isOwner(resource) {
+        return request.auth.uid == resource.data.userId;
+    }
 
-    // Users: Allow users to read their own data and create it.
-    // Allow any authenticated user to read public profiles.
     match /users/{userId} {
       allow read;
-      allow create, update, delete: if request.auth.uid == userId;
+      allow write: if request.auth.uid == userId;
     }
 
-    // Posts: Allow any authenticated user to read/write.
     match /posts/{postId} {
-      allow read, write: if request.auth != null;
-
-      // Comments: Allow authenticated users to read/write comments.
-      match /comments/{commentId} {
-        allow read, write: if request.auth != null;
-      }
-    }
-    
-    // Chats: Only participants can read/write messages
-    match /chats/{chatId} {
-      // The user must be one of the two UIDs in the chatId
-      allow read, write: if request.auth != null && request.auth.uid in chatId.split('_');
-
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null && request.auth.uid in resource.data.chatId.split('_');
-      }
-    }
-
-    // Events: Authenticated users can read/write.
-    match /events/{eventId} {
-        allow read: if request.auth != null;
-        allow create, update, delete: if request.auth != null && request.auth.uid == request.resource.data.userId;
-    }
-
-    // Farm Plots: Users can only manage their own plots.
-    match /farmPlots/{plotId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-    
-    // Forum Topics: Authenticated users can read/write.
-    match /forumTopics/{topicId} {
-      allow read, write: if request.auth != null;
-      // Replies
-      match /replies/{replyId} {
-         allow read, write: if request.auth != null;
-      }
-    }
-    
-    // Harvests: Users can only manage their own harvests and associated data.
-    match /harvests/{harvestId} {
-      allow read, write: if request.auth.uid == resource.data.userId;
-
-      match /harvestPlots/{plotId} {
-         allow read, write: if request.auth.uid == resource.data.userId;
-
-         match /operations/{operationId} {
-            allow read, write: if request.auth.uid == resource.data.userId;
-         }
-      }
-    }
-
-    // Items (inventory supplies): Users can only manage their own items.
-    match /items/{itemId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
-    }
-
-    // Inventory Logs: Users can only manage their own logs.
-    match /inventoryLogs/{logId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
-    }
-    
-    // Machinery: Users can only manage their own machinery.
-    match /machinery/{machineId} {
-        allow read, write: if request.auth.uid == resource.data.userId;
+      allow read: if isUserAuthenticated();
+      allow create, update, delete: if isOwner(request.resource);
         
-        // Maintenance records for machinery
-        match /maintenances/{maintId} {
-           allow read, write: if request.auth.uid == resource.data.userId;
+      match /comments/{commentId} {
+        allow read: if isUserAuthenticated();
+        allow create: if isUserAuthenticated();
+      }
+    }
+
+    match /events/{eventId} {
+      allow read: if isUserAuthenticated();
+      allow create: if isOwner(request.resource);
+      allow delete: if isOwner(resource);
+    }
+    
+    match /farmPlots/{plotId} {
+        allow read, write, delete: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+    }
+    
+    match /harvests/{harvestId} {
+        allow read, write, delete: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+        
+        match /harvestPlots/{plotId} {
+            allow read, delete: if isOwner(resource);
+            allow create: if isOwner(request.resource);
+
+            match /operations/{opId} {
+                 allow read, write, delete: if isOwner(resource);
+                 allow create: if isOwner(request.resource);
+            }
+        }
+    }
+    
+    match /items/{itemId} {
+        allow read, write, delete: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+    }
+    
+    match /inventoryLogs/{logId} {
+        allow read: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+    }
+    
+    match /machinery/{machineId} {
+        allow read, write, delete: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+
+        match /maintenances/{maintenanceId} {
+            allow read, write, delete: if isOwner(resource);
+            allow create: if isOwner(request.resource);
+        }
+    }
+    
+    match /livestockLots/{lotId} {
+        allow read, write, delete: if isOwner(resource);
+        allow create: if isOwner(request.resource);
+    }
+
+    match /listings/{listingId} {
+      allow read: if isUserAuthenticated();
+      allow create: if isOwner(request.resource);
+      allow update, delete: if isOwner(resource);
+    }
+
+    match /forumTopics/{topicId} {
+        allow read: if isUserAuthenticated();
+        allow create: if isOwner(request.resource);
+        allow update: if isOwner(resource); // For updating replyCount
+        allow delete: if isOwner(resource);
+
+        match /replies/{replyId} {
+            allow read: if isUserAuthenticated();
+            allow create: if isUserAuthenticated();
         }
     }
 
-    // Marketplace Listings: Allow authenticated users to read.
-    // Allow users to create, update, delete their own listings.
-    match /listings/{listingId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /chats/{chatId}/messages/{messageId} {
+      allow read, create: if isUserAuthenticated() && chatId.split('_').includes(request.auth.uid);
     }
   }
 }
