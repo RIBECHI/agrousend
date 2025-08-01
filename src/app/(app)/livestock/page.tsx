@@ -171,11 +171,20 @@ export default function LivestockPage() {
     setIsMoving(true);
     try {
         const lotDocRef = doc(firestore, 'livestockLots', lotToMove.id);
-        const selectedPlot = plots.find(p => p.id === destinationPlotId);
+        
+        let plotIdToSet = destinationPlotId;
+        let plotNameToSet = null;
+
+        if (destinationPlotId && destinationPlotId !== 'none') {
+            const selectedPlot = plots.find(p => p.id === destinationPlotId);
+            plotNameToSet = selectedPlot?.name || null;
+        } else {
+            plotIdToSet = ''; // Garante que o ID seja nulo/vazio no banco
+        }
         
         await updateDoc(lotDocRef, {
-            currentPlotId: destinationPlotId || null,
-            currentPlotName: selectedPlot?.name || null
+            currentPlotId: plotIdToSet === 'none' ? null : plotIdToSet,
+            currentPlotName: plotNameToSet
         });
         
         toast({ title: 'Lote movido com sucesso!' });
@@ -333,7 +342,7 @@ export default function LivestockPage() {
                             <SelectValue placeholder="Selecione um pasto" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Nenhum (Remover do pasto)</SelectItem>
+                            <SelectItem value="none">Nenhum (Remover do pasto)</SelectItem>
                             {plots.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                             ))}
