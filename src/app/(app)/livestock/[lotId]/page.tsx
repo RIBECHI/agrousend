@@ -5,11 +5,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { doc, getDoc, collection, query, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar, Weight, VenetianMask, Trash2, Pencil, Beef } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar, Weight, VenetianMask, Trash2, Pencil, Beef, MoreVertical, MoveRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -36,13 +36,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+
 
 interface LivestockLot {
     id: string;
     name: string;
     description?: string;
     animalCount?: number;
+    userId: string;
 }
 
 interface Animal {
@@ -65,6 +74,7 @@ export default function LotDetailPage() {
     const lotId = params.lotId as string;
 
     const [lot, setLot] = useState<LivestockLot | null>(null);
+    const [allLots, setAllLots] = useState<LivestockLot[]>([]);
     const [animals, setAnimals] = useState<Animal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -85,6 +95,11 @@ export default function LotDetailPage() {
     // Dialog state
     const [animalToDelete, setAnimalToDelete] = useState<string | null>(null);
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+    
+    // Move animal state
+    const [animalToMove, setAnimalToMove] = useState<Animal | null>(null);
+    const [showMoveDialog, setShowMoveDialog] = useState(false);
+    const [destinationLotId, setDestinationLotId] = useState('');
 
 
     // Fetch lot details
@@ -119,6 +134,18 @@ export default function LotDetailPage() {
         
         return () => unsubscribe();
     }, [lotId]);
+
+    // Fetch all lots for the move dialog
+    useEffect(() => {
+        if(!user) return;
+        const lotsCollection = collection(firestore, 'livestockLots');
+        const q = query(lotsCollection, where('userId', '==', user.uid));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedLots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LivestockLot));
+            setAllLots(fetchedLots);
+        });
+        return () => unsubscribe();
+    }, [user]);
     
     const resetForm = useCallback(() => {
         setIdentifier('');
@@ -217,6 +244,53 @@ export default function LotDetailPage() {
             setShowDeleteAlert(false);
         }
     };
+    
+    const openMoveDialog = (animal: Animal) => {
+        setAnimalToMove(animal);
+        setDestinationLotId('');
+        setShowMoveDialog(true);
+    }
+    
+    const handleMoveAnimal = async () => {
+        if (!animalToMove || !destinationLotId || destinationLotId === lotId) {
+            toast({ variant: "destructive", title: "Seleção inválida", description: "Por favor, selecione um lote de destino diferente do atual." });
+            return;
+        }
+
+        setIsSubmitting(true);
+        const sourceLotRef = doc(firestore, "livestockLots", lotId);
+        const destinationLotRef = doc(firestore, "livestockLots", destinationLotId);
+        const sourceAnimalRef = doc(sourceLotRef, "animals", animalToMove.id);
+        const destinationAnimalRef = doc(destinationLotRef, "animals", animalToMove.id);
+
+        try {
+            await runTransaction(firestore, async (transaction) => {
+                const animalDoc = await transaction.get(sourceAnimalRef);
+                if (!animalDoc.exists()) {
+                    throw "Animal não encontrado no lote de origem.";
+                }
+
+                // 1. Copy animal to destination
+                transaction.set(destinationAnimalRef, animalDoc.data());
+                // 2. Delete animal from source
+                transaction.delete(sourceAnimalRef);
+                // 3. Update animal counts
+                transaction.update(sourceLotRef, { animalCount: increment(-1) });
+                transaction.update(destinationLotRef, { animalCount: increment(1) });
+            });
+
+            toast({ title: "Animal movido com sucesso!" });
+            setShowMoveDialog(false);
+            setAnimalToMove(null);
+
+        } catch (error) {
+            console.error("Erro ao mover animal: ", error);
+            toast({ variant: "destructive", title: "Erro na movimentação", description: "Não foi possível mover o animal. Tente novamente." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
 
     if (isLoading) {
         return (
@@ -350,12 +424,24 @@ export default function LotDetailPage() {
                                         <TableCell>{animal.weight}</TableCell>
                                         <TableCell>{format(animal.entryDate.toDate(), 'dd/MM/yyyy')}</TableCell>
                                         <TableCell className="text-right">
-                                             <Button variant="ghost" size="icon" className="mr-2" onClick={() => handleOpenSheet(animal)}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(animal.id)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreVertical className="h-5 w-5" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleOpenSheet(animal)}>
+                                                        <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => openMoveDialog(animal)}>
+                                                        <MoveRight className="mr-2 h-4 w-4" /> Mover
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => openDeleteDialog(animal.id)} className="text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -382,6 +468,38 @@ export default function LotDetailPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Mover Animal</DialogTitle>
+                    <DialogDescription>
+                        Selecione o lote de destino para o animal "{animalToMove?.identifier}".
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="destination-lot">Lote de Destino</Label>
+                    <Select value={destinationLotId} onValueChange={setDestinationLotId}>
+                        <SelectTrigger id="destination-lot">
+                            <SelectValue placeholder="Selecione um lote..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {allLots.filter(l => l.id !== lotId).map(l => (
+                                <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancelar</Button>
+                    </DialogClose>
+                    <Button onClick={handleMoveAnimal} disabled={isSubmitting || !destinationLotId}>
+                        {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Movendo...</> : "Confirmar Movimentação"}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         </>
     );
 }
