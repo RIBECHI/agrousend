@@ -26,6 +26,7 @@ import {
   Wheat,
   ListChecks,
   ShieldCheck,
+  Beef,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ const managementNavItems = [
     { href: '/items', label: 'Insumos', icon: Box },
     { href: '/inventory', label: 'Estoque', icon: Warehouse },
     { href: '/machinery', label: 'Maquinário', icon: Tractor },
+    { href: '/livestock', label: 'Rebanho', icon: Beef },
     { href: '/planning', label: 'Planejamento', icon: ListChecks },
 ]
 
