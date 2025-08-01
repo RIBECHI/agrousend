@@ -42,16 +42,19 @@ export default function SignUpPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      // Primeiro, atualiza o perfil de autenticação
       await updateProfile(user, {
         displayName: name,
       });
 
+      // Em seguida, salva os dados no Firestore, garantindo que displayName e email não sejam nulos
       await setDoc(doc(firestore, "users", user.uid), {
         uid: user.uid,
-        displayName: name,
-        email: user.email,
+        displayName: name, // Usando a variável 'name' diretamente
+        email: user.email, // Usando o email do objeto user
         photoURL: user.photoURL,
         role: role,
+        isBlocked: false, // Define isBlocked como false por padrão
       });
 
       router.push('/feed');
