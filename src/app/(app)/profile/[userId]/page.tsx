@@ -31,13 +31,13 @@ export default function PublicProfilePage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const userId = params.userId as string;
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const userId = params.userId as string;
     if (typeof userId !== 'string') return;
     
     // Redirect to own profile page if the userId is the current user's
@@ -64,7 +64,7 @@ export default function PublicProfilePage() {
     };
 
     fetchProfile();
-  }, [userId, currentUser, router, toast]);
+  }, [params.userId, currentUser, router, toast]);
 
   if (isLoading) {
     return (

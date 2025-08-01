@@ -100,8 +100,6 @@ export default function PlotOperationsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const params = useParams();
-  const harvestId = params.harvestId as string;
-  const plotId = params.plotId as string;
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -128,6 +126,9 @@ export default function PlotOperationsPage() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
   useEffect(() => {
+    const harvestId = params.harvestId as string;
+    const plotId = params.plotId as string;
+
     if (!user || !harvestId || !plotId) return;
 
     const fetchInitialData = async () => {
@@ -180,7 +181,7 @@ export default function PlotOperationsPage() {
         opsUnsubscribe();
         itemsUnsubscribe();
     }
-  }, [user, harvestId, plotId, router, toast]);
+  }, [user, params, router, toast]);
   
   const resetForm = useCallback(() => {
     setOpType('');
@@ -244,6 +245,8 @@ export default function PlotOperationsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const harvestId = params.harvestId as string;
+    const plotId = params.plotId as string;
     if (!user || !plot || !opType || !opDate || (opDescription.trim() === '' && opInputs.length === 0)) {
         toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo, data e pelo menos uma descrição ou insumo são obrigatórios.'});
         return;
@@ -306,6 +309,8 @@ export default function PlotOperationsPage() {
   }
 
   const handleDeleteOperation = async (opId: string | null) => {
+    const harvestId = params.harvestId as string;
+    const plotId = params.plotId as string;
     if (!opId || !harvestId || !plotId) return;
 
     try {

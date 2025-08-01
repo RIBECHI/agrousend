@@ -42,7 +42,6 @@ export default function ManageHarvestPage() {
   const { user } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const harvestId = params.id as string;
   const { toast } = useToast();
 
   const [harvest, setHarvest] = useState<Harvest | null>(null);
@@ -56,14 +55,15 @@ export default function ManageHarvestPage() {
 
   // Fetch Harvest Details
   useEffect(() => {
-    if (typeof harvestId !== 'string') return;
+    const harvestId = params.id as string;
+    if (typeof harvestId !== 'string' || !user?.uid) return;
     const docRef = doc(firestore, 'harvests', harvestId);
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as Omit<Harvest, 'id'>;
         // Ensure user has permission
-        if (data.userId === user?.uid) {
+        if (data.userId === user.uid) {
             setHarvest({ id: docSnap.id, ...data });
         } else {
              toast({ variant: 'destructive', title: 'Acesso Negado' });
@@ -77,7 +77,7 @@ export default function ManageHarvestPage() {
     });
 
     return () => unsubscribe();
-  }, [harvestId, router, toast, user?.uid]);
+  }, [params.id, router, toast, user?.uid]);
   
   // Fetch All User's Farm Plots
   useEffect(() => {
@@ -96,6 +96,7 @@ export default function ManageHarvestPage() {
 
   // Fetch Plots associated with this Harvest
   useEffect(() => {
+    const harvestId = params.id as string;
     if (!harvestId || typeof harvestId !== 'string' || !user) return;
     const harvestPlotsCollection = collection(firestore, 'harvests', harvestId, 'harvestPlots');
     // We can filter by userId here for security and efficiency, matching the Firestore rules.
@@ -113,9 +114,10 @@ export default function ManageHarvestPage() {
     });
 
     return () => unsubscribe();
-  }, [harvestId, user, toast]);
+  }, [params.id, user, toast]);
 
   const handleAddPlotToHarvest = async (plot: FarmPlot) => {
+    const harvestId = params.id as string;
     if (!harvestId || typeof harvestId !== 'string' || !user) return;
     setIsProcessing(true);
     try {
@@ -137,6 +139,7 @@ export default function ManageHarvestPage() {
   }
 
   const handleRemovePlotFromHarvest = async (harvestPlot: HarvestPlot) => {
+     const harvestId = params.id as string;
      if (!harvestId || typeof harvestId !== 'string') return;
      setIsProcessing(true);
      try {

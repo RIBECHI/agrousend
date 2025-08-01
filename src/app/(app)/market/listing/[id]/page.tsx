@@ -42,12 +42,12 @@ export default function ListingDetailPage() {
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const id = params.id as string;
     if (id && typeof id === 'string') {
       const getListing = async () => {
         setIsLoading(true);
@@ -68,7 +68,7 @@ export default function ListingDetailPage() {
 
       getListing();
     }
-  }, [id, router, toast]);
+  }, [params.id, router, toast]);
   
   const handleCopyLink = () => {
     try {
