@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
@@ -71,15 +71,19 @@ interface Item {
   id: string;
   name: string;
   unit: string;
+  category: string;
 }
 
 // State for the form inputs, including the dose per hectare
 interface OperationInputFormState {
+    category: string;
     itemId: string;
     dosePerHectare: number | '';
 }
 
 const operationTypes = ['Plantio', 'Pulverização', 'Adubação', 'Colheita', 'Outra'];
+const itemCategories = ['Sementes', 'Fertilizantes', 'Defensivos', 'Combustível', 'Peças', 'Adjuvantes', 'Outros'];
+
 
 const OperationIcon = ({ type }: { type: Operation['type']}) => {
     switch(type) {
@@ -194,10 +198,14 @@ export default function PlotOperationsPage() {
         setOpDescription(operation.description);
         setOpStatus(operation.status);
         const plotArea = plot.area || 1; // Avoid division by zero
-        setOpInputs(operation.inputs.map(i => ({ 
-            itemId: i.itemId, 
-            dosePerHectare: plotArea > 0 ? (i.quantity / plotArea) : i.quantity
-        })));
+        setOpInputs(operation.inputs.map(i => {
+            const itemDetail = items.find(item => item.id === i.itemId);
+            return {
+                category: itemDetail?.category || '',
+                itemId: i.itemId, 
+                dosePerHectare: plotArea > 0 ? (i.quantity / plotArea) : i.quantity
+            }
+        }));
     } else {
         resetForm();
     }
@@ -205,26 +213,32 @@ export default function PlotOperationsPage() {
   }
 
   const handleAddInput = () => {
-    setOpInputs(prev => [...prev, { itemId: '', dosePerHectare: '' }]);
+    setOpInputs(prev => [...prev, { category: '', itemId: '', dosePerHectare: '' }]);
   }
   
   const handleRemoveInput = (index: number) => {
     setOpInputs(prev => prev.filter((_, i) => i !== index));
   }
 
-  const handleInputChange = (index: number, field: 'itemId' | 'dosePerHectare', value: string | number) => {
+  const handleInputChange = (index: number, field: keyof OperationInputFormState, value: string | number) => {
     setOpInputs(prev => {
         const newInputs = [...prev];
         const currentInput = { ...newInputs[index] };
-        if (field === 'itemId') {
+        
+        if (field === 'category') {
+            currentInput.category = value as string;
+            // Reset item when category changes
+            currentInput.itemId = ''; 
+        } else if (field === 'itemId') {
             currentInput.itemId = value as string;
         } else {
             currentInput.dosePerHectare = value === '' ? '' : Number(value);
         }
+        
         newInputs[index] = currentInput;
         return newInputs;
     });
-  }
+}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,7 +261,7 @@ export default function PlotOperationsPage() {
         });
 
     if (opInputs.length > 0 && validInputs.length !== opInputs.length) {
-        toast({ variant: 'destructive', title: 'Insumos inválidos', description: 'Preencha todos os campos dos insumos adicionados (Item e Dose).'});
+        toast({ variant: 'destructive', title: 'Insumos inválidos', description: 'Preencha todos os campos dos insumos adicionados (Categoria, Item e Dose).'});
         return;
     }
 
@@ -389,20 +403,31 @@ export default function PlotOperationsPage() {
                               {opInputs.map((input, index) => {
                                   const selectedItem = items.find(i => i.id === input.itemId);
                                   const totalCalculated = (input.dosePerHectare || 0) * (plot?.area || 0);
+                                  const filteredItems = input.category ? items.filter(i => i.category === input.category) : [];
+
                                   return (
                                     <div key={index} className="flex flex-col gap-2 p-3 border rounded-lg">
                                         <div className="flex items-center justify-between">
-                                            <Label htmlFor={`item-${index}`}>Insumo {index + 1}</Label>
+                                            <p className='font-medium text-sm'>Insumo {index + 1}</p>
                                             <Button type="button" variant="ghost" size="icon" className="text-destructive h-6 w-6" onClick={() => handleRemoveInput(index)}>
                                                 <MinusCircle className="h-4 w-4"/>
                                             </Button>
                                         </div>
                                         <div className='space-y-2'>
-                                            <Label className="text-xs">Item</Label>
-                                            <Select value={input.itemId} onValueChange={(value) => handleInputChange(index, 'itemId', value)}>
-                                                <SelectTrigger id={`item-${index}`}><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                            <Label className="text-xs">Categoria</Label>
+                                            <Select value={input.category} onValueChange={(value) => handleInputChange(index, 'category', value)}>
+                                                <SelectTrigger><SelectValue placeholder="Selecione a Categoria..." /></SelectTrigger>
                                                 <SelectContent>
-                                                    {items.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                                                    {itemCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className='space-y-2'>
+                                            <Label className="text-xs">Item</Label>
+                                            <Select value={input.itemId} onValueChange={(value) => handleInputChange(index, 'itemId', value)} disabled={!input.category}>
+                                                <SelectTrigger><SelectValue placeholder="Selecione o Item..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {filteredItems.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>

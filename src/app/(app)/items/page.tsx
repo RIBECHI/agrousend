@@ -32,7 +32,7 @@ interface Item {
   userId: string;
 }
 
-const categories = ['Sementes', 'Fertilizantes', 'Defensivos', 'Combustível', 'Peças', 'Outros'];
+const categories = ['Sementes', 'Fertilizantes', 'Defensivos', 'Combustível', 'Peças', 'Adjuvantes', 'Outros'];
 const units = ['Litros (L)', 'Quilogramas (kg)', 'Sacos (sc)', 'Unidades (un)', 'Caixas (cx)'];
 
 export default function ItemsPage() {
@@ -297,5 +297,3 @@ export default function ItemsPage() {
     </>
   );
 }
-
-    
