@@ -5,12 +5,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment, runTransaction, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar, Weight, VenetianMask, Trash2, Pencil, Beef, MoreVertical, MoveRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { Loader, ArrowLeft, PlusCircle, Calendar, Weight, VenetianMask, Trash2, Pencil, Beef, MoreVertical, MoveRight, History } from 'lucide-react';
+import { format, formatDistanceStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
@@ -64,6 +64,14 @@ interface Animal {
     userId: string;
 }
 
+interface MovementHistory {
+    id: string;
+    plotId: string;
+    plotName: string;
+    entryDate: Timestamp;
+    exitDate: Timestamp | null;
+}
+
 const races = ["Nelore", "Angus", "Brahman", "Girolando", "Holandês", "Outra"];
 
 export default function LotDetailPage() {
@@ -76,6 +84,7 @@ export default function LotDetailPage() {
     const [lot, setLot] = useState<LivestockLot | null>(null);
     const [allLots, setAllLots] = useState<LivestockLot[]>([]);
     const [animals, setAnimals] = useState<Animal[]>([]);
+    const [movementHistory, setMovementHistory] = useState<MovementHistory[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     // Sheet state
@@ -130,6 +139,21 @@ export default function LotDetailPage() {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedAnimals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Animal));
             setAnimals(fetchedAnimals);
+        });
+        
+        return () => unsubscribe();
+    }, [lotId]);
+
+    // Fetch Movement History
+    useEffect(() => {
+        if (!lotId) return;
+
+        const historyCollection = collection(firestore, 'livestockLots', lotId, 'movementHistory');
+        const q = query(historyCollection, orderBy('entryDate', 'desc'));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedHistory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MovementHistory));
+            setMovementHistory(fetchedHistory);
         });
         
         return () => unsubscribe();
@@ -324,132 +348,168 @@ export default function LotDetailPage() {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">Animais no Lote</h2>
-                <Sheet open={isSheetOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsSheetOpen(open); }}>
-                    <SheetTrigger asChild>
-                        <Button onClick={() => handleOpenSheet(null)}>
-                            <PlusCircle className="mr-2" />
-                            Adicionar Animal
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent className="w-full sm:max-w-md">
-                        <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                            <SheetHeader>
-                                <SheetTitle>{isEditing ? 'Editar Animal' : 'Novo Animal'}</SheetTitle>
-                                <SheetDescription>Preencha os dados do animal.</SheetDescription>
-                            </SheetHeader>
-                            <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
-                                <div>
-                                    <Label htmlFor="identifier">Identificação (Brinco/Nome)</Label>
-                                    <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
-                                </div>
-                                <div>
-                                    <Label>Data de Entrada / Nascimento</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !entryDate && "text-muted-foreground")}>
-                                                <Calendar className="mr-2 h-4 w-4" />
-                                                {entryDate ? format(entryDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={entryDate} onSelect={setEntryDate} initialFocus /></PopoverContent>
-                                    </Popover>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div>
-                                        <Label htmlFor="weight">Peso (kg)</Label>
-                                        <Input id="weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value === '' ? '' : Number(e.target.value))} required />
-                                    </div>
-                                    <div>
-                                        <Label>Sexo</Label>
-                                        <Select value={sex} onValueChange={(v) => setSex(v as any)} required>
-                                            <SelectTrigger><SelectValue placeholder="Selecione"/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Macho">Macho</SelectItem>
-                                                <SelectItem value="Fêmea">Fêmea</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Raça</Label>
-                                    <Select value={breed} onValueChange={setBreed} required>
-                                        <SelectTrigger><SelectValue placeholder="Selecione a raça"/></SelectTrigger>
-                                        <SelectContent>
-                                            {races.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                {breed === 'Outra' && (
-                                    <div>
-                                        <Label htmlFor="customBreed">Especifique a raça</Label>
-                                        <Input id="customBreed" value={customBreed} onChange={(e) => setCustomBreed(e.target.value)} required placeholder="Ex: Gir Leiteiro" />
-                                    </div>
-                                )}
-                            </div>
-                            <SheetFooter className="pt-4 mt-auto">
-                                <SheetClose asChild><Button type="button" variant="outline">Cancelar</Button></SheetClose>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Adicionar Animal'}
+            <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-xl font-bold">Animais no Lote</h2>
+                        <Sheet open={isSheetOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsSheetOpen(open); }}>
+                            <SheetTrigger asChild>
+                                <Button onClick={() => handleOpenSheet(null)}>
+                                    <PlusCircle className="mr-2" />
+                                    Adicionar Animal
                                 </Button>
-                            </SheetFooter>
-                        </form>
-                    </SheetContent>
-                </Sheet>
-            </div>
-            
-             <Card>
-                <CardContent className="p-0">
-                    {animals.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-10">Nenhum animal cadastrado neste lote.</p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Identificação</TableHead>
-                                    <TableHead>Sexo</TableHead>
-                                    <TableHead>Raça</TableHead>
-                                    <TableHead>Peso (kg)</TableHead>
-                                    <TableHead>Data de Entrada</TableHead>
-                                    <TableHead className="text-right">Ações</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {animals.map(animal => (
-                                    <TableRow key={animal.id}>
-                                        <TableCell className="font-medium">{animal.identifier}</TableCell>
-                                        <TableCell>{animal.sex}</TableCell>
-                                        <TableCell>{animal.breed}</TableCell>
-                                        <TableCell>{animal.weight}</TableCell>
-                                        <TableCell>{format(animal.entryDate.toDate(), 'dd/MM/yyyy')}</TableCell>
-                                        <TableCell className="text-right">
-                                             <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreVertical className="h-5 w-5" />
+                            </SheetTrigger>
+                            <SheetContent className="w-full sm:max-w-md">
+                                <form onSubmit={handleSubmit} className="flex flex-col h-full">
+                                    <SheetHeader>
+                                        <SheetTitle>{isEditing ? 'Editar Animal' : 'Novo Animal'}</SheetTitle>
+                                        <SheetDescription>Preencha os dados do animal.</SheetDescription>
+                                    </SheetHeader>
+                                    <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
+                                        <div>
+                                            <Label htmlFor="identifier">Identificação (Brinco/Nome)</Label>
+                                            <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
+                                        </div>
+                                        <div>
+                                            <Label>Data de Entrada / Nascimento</Label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !entryDate && "text-muted-foreground")}>
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        {entryDate ? format(entryDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                                                     </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => handleOpenSheet(animal)}>
-                                                        <Pencil className="mr-2 h-4 w-4" /> Editar
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => openMoveDialog(animal)}>
-                                                        <MoveRight className="mr-2 h-4 w-4" /> Mover
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => openDeleteDialog(animal.id)} className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0"><CalendarPicker mode="single" selected={entryDate} onSelect={setEntryDate} initialFocus /></PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="weight">Peso (kg)</Label>
+                                                <Input id="weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value === '' ? '' : Number(e.target.value))} required />
+                                            </div>
+                                            <div>
+                                                <Label>Sexo</Label>
+                                                <Select value={sex} onValueChange={(v) => setSex(v as any)} required>
+                                                    <SelectTrigger><SelectValue placeholder="Selecione"/></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Macho">Macho</SelectItem>
+                                                        <SelectItem value="Fêmea">Fêmea</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label>Raça</Label>
+                                            <Select value={breed} onValueChange={setBreed} required>
+                                                <SelectTrigger><SelectValue placeholder="Selecione a raça"/></SelectTrigger>
+                                                <SelectContent>
+                                                    {races.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        {breed === 'Outra' && (
+                                            <div>
+                                                <Label htmlFor="customBreed">Especifique a raça</Label>
+                                                <Input id="customBreed" value={customBreed} onChange={(e) => setCustomBreed(e.target.value)} required placeholder="Ex: Gir Leiteiro" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <SheetFooter className="pt-4 mt-auto">
+                                        <SheetClose asChild><Button type="button" variant="outline">Cancelar</Button></SheetClose>
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Adicionar Animal'}
+                                        </Button>
+                                    </SheetFooter>
+                                </form>
+                            </SheetContent>
+                        </Sheet>
+                    </div>
+                    
+                    <Card>
+                        <CardContent className="p-0">
+                            {animals.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-10">Nenhum animal cadastrado neste lote.</p>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Identificação</TableHead>
+                                            <TableHead>Sexo</TableHead>
+                                            <TableHead>Raça</TableHead>
+                                            <TableHead>Peso (kg)</TableHead>
+                                            <TableHead className="text-right">Ações</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {animals.map(animal => (
+                                            <TableRow key={animal.id}>
+                                                <TableCell className="font-medium">{animal.identifier}</TableCell>
+                                                <TableCell>{animal.sex}</TableCell>
+                                                <TableCell>{animal.breed}</TableCell>
+                                                <TableCell>{animal.weight}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreVertical className="h-5 w-5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleOpenSheet(animal)}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => openMoveDialog(animal)}>
+                                                                <MoveRight className="mr-2 h-4 w-4" /> Mover
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => openDeleteDialog(animal.id)} className="text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <History className="h-5 w-5"/>
+                                Histórico de Pastagem
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             {movementHistory.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-4">Nenhum histórico de movimentação para este lote.</p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {movementHistory.map((move, index) => {
+                                        const duration = formatDistanceStrict(
+                                            move.exitDate ? move.exitDate.toDate() : new Date(),
+                                            move.entryDate.toDate(),
+                                            { locale: ptBR, unit: 'day' }
+                                        );
+                                        return (
+                                            <li key={move.id} className="border-b pb-3 last:border-b-0">
+                                                <p className="font-semibold">{move.plotName}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {format(move.entryDate.toDate(), 'dd/MM/yyyy')} - {move.exitDate ? format(move.exitDate.toDate(), 'dd/MM/yyyy') : 'Atual'}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">Permanência: {duration}</p>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
 
         </div>
         <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>

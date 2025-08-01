@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, Timestamp, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -78,6 +78,7 @@ export default function LivestockPage() {
     setIsLoading(true);
     const unsubscribeLots = onSnapshot(qLots, (snapshot) => {
       let fetchedLots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LivestockLot));
+      // Ordenação no cliente para evitar índice composto
       fetchedLots.sort((a, b) => (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0) - (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0));
       setLots(fetchedLots);
       setIsLoading(false);
@@ -166,27 +167,57 @@ export default function LivestockPage() {
 
   const handleMoveLot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lotToMove) return;
+    if (!lotToMove || !user) return;
+
+    // Não permite mover para o mesmo local
+    if(lotToMove.currentPlotId === destinationPlotId) {
+        toast({ variant: "default", title: 'Lote já está neste local.' });
+        return;
+    }
 
     setIsMoving(true);
     try {
+        const batch = writeBatch(firestore);
         const lotDocRef = doc(firestore, 'livestockLots', lotToMove.id);
+        const now = Timestamp.now();
         
-        let plotIdToSet = destinationPlotId;
-        let plotNameToSet = null;
+        // 1. Finaliza o registro de movimento anterior, se houver
+        if (lotToMove.currentPlotId) {
+            const historyCollectionRef = collection(lotDocRef, 'movementHistory');
+            const q = query(historyCollectionRef, where('exitDate', '==', null), orderBy('entryDate', 'desc'));
+            const oldMovementSnapshot = await getDocs(q);
 
-        if (destinationPlotId && destinationPlotId !== 'none') {
-            const selectedPlot = plots.find(p => p.id === destinationPlotId);
-            plotNameToSet = selectedPlot?.name || null;
-        } else {
-            plotIdToSet = ''; // Garante que o ID seja nulo/vazio no banco
+            if (!oldMovementSnapshot.empty) {
+                const oldMovementDoc = oldMovementSnapshot.docs[0];
+                batch.update(oldMovementDoc.ref, { exitDate: now });
+            }
         }
         
-        await updateDoc(lotDocRef, {
-            currentPlotId: plotIdToSet === 'none' ? null : plotIdToSet,
-            currentPlotName: plotNameToSet
-        });
+        // 2. Cria o novo registro de movimento, se o destino for um pasto
+        if (destinationPlotId && destinationPlotId !== 'none') {
+            const historyCollectionRef = collection(lotDocRef, 'movementHistory');
+            const selectedPlot = plots.find(p => p.id === destinationPlotId);
+            const newMovementRef = doc(historyCollectionRef); // Cria uma referência para o novo documento
+            batch.set(newMovementRef, {
+                userId: user.uid,
+                plotId: destinationPlotId,
+                plotName: selectedPlot?.name || 'Desconhecido',
+                entryDate: now,
+                exitDate: null, // Fica em aberto
+            });
+             batch.update(lotDocRef, {
+                currentPlotId: destinationPlotId,
+                currentPlotName: selectedPlot?.name || null
+            });
+        } else {
+             // 3. Limpa a localização atual no lote se o destino for "Nenhum"
+             batch.update(lotDocRef, {
+                currentPlotId: null,
+                currentPlotName: null
+            });
+        }
         
+        await batch.commit();
         toast({ title: 'Lote movido com sucesso!' });
         setIsMoveSheetOpen(false);
         setLotToMove(null);
