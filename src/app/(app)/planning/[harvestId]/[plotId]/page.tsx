@@ -9,7 +9,7 @@ import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, ser
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle, Pencil, Calculator } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wheat, Map, Settings, Trash2, Tractor, Wind, Sprout, MinusCircle, Pencil, Calculator, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -29,6 +29,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
@@ -147,13 +153,6 @@ export default function PlotOperationsPage() {
     
     fetchInitialData();
     
-    // Note: The Firestore path seems incorrect for a sub-subcollection based on previous logic.
-    // Assuming 'operations' is a subcollection of 'harvests'. If it's under 'harvestPlots', the path would be different.
-    // Let's assume the path is /harvests/{harvestId}/operations/{operationId} for simplicity, and plotId is a field.
-    // If it's truly nested, rules need to reflect that.
-    // For now, assuming direct subcollection: /harvests/{harvestId}/operations
-    // The previous implementation used /harvests/{harvestId}/harvestPlots/{plotId}/operations, which is very nested.
-    // Let's stick to the existing structure.
     const opsQuery = query(collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`));
     const opsUnsubscribe = onSnapshot(opsQuery, (snapshot) => {
         let fetchedOps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Operation));
@@ -264,12 +263,10 @@ export default function PlotOperationsPage() {
 
         if (isEditing && editingOperation) {
             const opDocRef = doc(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`, editingOperation.id);
-            // Ensure userId is preserved on update
             opData.userId = editingOperation.userId; 
             await updateDoc(opDocRef, opData);
             toast({ title: 'Sucesso!', description: 'Operação atualizada.'});
         } else {
-            // Add userId on creation
             opData.userId = user.uid;
             opData.createdAt = serverTimestamp();
             const operationsCollection = collection(firestore, `harvests/${harvestId}/harvestPlots/${plotId}/operations`);
@@ -474,9 +471,9 @@ export default function PlotOperationsPage() {
                                     <OperationIcon type={op.type} />
                                 </div>
                                 <div className="flex-1">
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                         <p className="font-semibold">{op.type} <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${op.status === 'Concluída' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{op.status}</span></p>
-                                        <p className="text-xs text-muted-foreground mt-1">
+                                        <p className="text-xs text-muted-foreground mt-1 sm:mt-0">
                                             {format(op.date.toDate(), "dd 'de' MMM, yyyy", { locale: ptBR })}
                                         </p>
                                     </div>
@@ -500,13 +497,24 @@ export default function PlotOperationsPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="flex items-center ml-2">
-                                <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => handleOpenSheet(op)}>
-                                    <Pencil className="h-4 w-4"/>
-                                </Button>
-                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => openDeleteDialog(op.id)}>
-                                    <Trash2 className="h-4 w-4"/>
-                                </Button>
+                            <div className="ml-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleOpenSheet(op)}>
+                                            <Pencil className="mr-2 h-4 w-4"/>
+                                            Editar
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => openDeleteDialog(op.id)} className="text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4"/>
+                                            Excluir
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </li>
                     ))}

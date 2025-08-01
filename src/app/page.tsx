@@ -77,8 +77,8 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:items-center lg:justify-center bg-muted">
          <ImageTilt imageUrl="https://placehold.co/1200x1200.png" data-ai-hint="soybean field" />
       </div>
-      <div className="flex items-center justify-center py-12 min-h-screen">
-          <Card className="w-full max-w-md mx-4 border-none shadow-none">
+      <div className="flex items-center justify-center py-12 min-h-screen px-4">
+          <Card className="w-full max-w-md mx-auto border-none shadow-none">
             <CardHeader className="text-center">
                <div className="flex justify-center items-center mb-4">
                   <Leaf className="h-10 w-10 text-primary" />
