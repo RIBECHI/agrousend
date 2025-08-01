@@ -15,12 +15,13 @@ import { Loader, PlusCircle, ArrowUpCircle, ArrowDownCircle, History, Warehouse 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ItemFormSheet } from '@/components/items/item-form-sheet';
+import { Separator } from '@/components/ui/separator';
 
 interface Item {
   id: string;
   name: string;
   unit: string;
-  userId: string;
   currentStock?: number;
 }
 
@@ -44,7 +45,8 @@ export default function InventoryPage() {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   
   // Sheet state
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isTransactionSheetOpen, setIsTransactionSheetOpen] = useState(false);
+  const [isItemFormSheetOpen, setIsItemFormSheetOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<'in' | 'out'>('in');
   
   // Form state
@@ -100,15 +102,30 @@ export default function InventoryPage() {
     return () => unsubscribe();
   }, [user, toast]);
 
-  const resetForm = useCallback(() => {
+  const resetTransactionForm = useCallback(() => {
     setSelectedItemId('');
     setQuantity('');
     setIsSubmitting(false);
   }, []);
 
-  const handleOpenSheet = (type: 'in' | 'out') => {
+  const handleOpenTransactionSheet = (type: 'in' | 'out') => {
     setTransactionType(type);
-    setIsSheetOpen(true);
+    setIsTransactionSheetOpen(true);
+  }
+
+  const handleSelectChange = (value: string) => {
+    if (value === 'add-new-item') {
+        setIsTransactionSheetOpen(false);
+        setIsItemFormSheetOpen(true);
+    } else {
+        setSelectedItemId(value);
+    }
+  }
+
+  const handleItemSaved = (newItemId: string) => {
+    setSelectedItemId(newItemId); // Pre-select the new item
+    setIsItemFormSheetOpen(false); // Close the item form
+    setIsTransactionSheetOpen(true); // Re-open the transaction form
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,8 +172,8 @@ export default function InventoryPage() {
         });
         
         toast({ title: "Sucesso!", description: "Movimentação de estoque registrada." });
-        resetForm();
-        setIsSheetOpen(false);
+        resetTransactionForm();
+        setIsTransactionSheetOpen(false);
 
     } catch (error: any) {
       console.error("Erro na transação de estoque: ", error);
@@ -173,11 +190,11 @@ export default function InventoryPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-primary">Controle de Estoque</h1>
          <div className="flex gap-2">
-             <Button variant="outline" className="text-red-500 border-red-500 hover:bg-red-500 hover:text-white" onClick={() => handleOpenSheet('out')}>
+             <Button variant="outline" className="text-red-500 border-red-500 hover:bg-red-500 hover:text-white" onClick={() => handleOpenTransactionSheet('out')}>
                 <ArrowDownCircle className="mr-2" />
                 Registrar Saída
             </Button>
-            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleOpenSheet('in')}>
+            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleOpenTransactionSheet('in')}>
                 <ArrowUpCircle className="mr-2" />
                 Registrar Entrada
             </Button>
@@ -260,9 +277,9 @@ export default function InventoryPage() {
        </div>
 
       
-      <Sheet open={isSheetOpen} onOpenChange={(open) => {
-            if(!open) resetForm();
-            setIsSheetOpen(open);
+      <Sheet open={isTransactionSheetOpen} onOpenChange={(open) => {
+            if(!open) resetTransactionForm();
+            setIsTransactionSheetOpen(open);
         }}>
           <SheetContent className="w-full sm:max-w-md">
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -277,11 +294,15 @@ export default function InventoryPage() {
               <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
                   <div>
                     <Label>Item</Label>
-                    <Select value={selectedItemId} onValueChange={setSelectedItemId} required>
+                    <Select value={selectedItemId} onValueChange={handleSelectChange} required>
                         <SelectTrigger disabled={isLoadingItems}>
                             <SelectValue placeholder={isLoadingItems ? "Carregando..." : "Selecione um item"} />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="add-new-item" className="text-primary font-semibold">
+                                <PlusCircle className="mr-2 h-4 w-4 inline-block" /> Cadastrar novo item...
+                            </SelectItem>
+                            <Separator className="my-1"/>
                             {items.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -302,6 +323,12 @@ export default function InventoryPage() {
             </form>
           </SheetContent>
         </Sheet>
+
+        <ItemFormSheet 
+            isOpen={isItemFormSheetOpen} 
+            onOpenChange={setIsItemFormSheetOpen} 
+            onItemSaved={handleItemSaved}
+        />
     </>
   );
 }
