@@ -9,7 +9,7 @@ import { doc, getDoc, collection, query, where, orderBy, onSnapshot, addDoc, ser
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wrench, Trash2, Pencil, MoreVertical } from 'lucide-react';
+import { Loader, ArrowLeft, PlusCircle, Calendar as CalendarIcon, Wrench, Trash2, Pencil, MoreVertical, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -45,6 +45,7 @@ interface Machine {
   model: string;
   year: number;
   imageUrl?: string;
+  type: string;
 }
 
 interface Maintenance {
@@ -53,6 +54,7 @@ interface Maintenance {
     date: Timestamp;
     description: string;
     cost: number;
+    horimeter?: number;
     userId: string;
 }
 
@@ -63,6 +65,7 @@ export default function MachineMaintenancePage() {
   const router = useRouter();
   const { toast } = useToast();
   const params = useParams();
+  const machineId = params.machineId as string;
 
   const [machine, setMachine] = useState<Machine | null>(null);
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
@@ -79,6 +82,7 @@ export default function MachineMaintenancePage() {
   const [maintDate, setMaintDate] = useState<Date | undefined>();
   const [maintDescription, setMaintDescription] = useState('');
   const [maintCost, setMaintCost] = useState<number | ''>('');
+  const [maintHorimeter, setMaintHorimeter] = useState<number | ''>('');
 
 
   // Dialog state
@@ -86,7 +90,6 @@ export default function MachineMaintenancePage() {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
   useEffect(() => {
-    const machineId = params.machineId as string;
     if (!user || !machineId) return;
 
     const fetchInitialData = async () => {
@@ -122,13 +125,14 @@ export default function MachineMaintenancePage() {
     return () => {
         maintUnsubscribe();
     }
-  }, [user, params, router, toast]);
+  }, [user, machineId, router, toast]);
   
   const resetForm = useCallback(() => {
     setMaintType('');
     setMaintDate(undefined);
     setMaintDescription('');
     setMaintCost('');
+    setMaintHorimeter('');
     setIsSubmitting(false);
     setEditingMaintenance(null);
   }, []);
@@ -140,6 +144,7 @@ export default function MachineMaintenancePage() {
         setMaintDate(maintenance.date.toDate());
         setMaintDescription(maintenance.description);
         setMaintCost(maintenance.cost);
+        setMaintHorimeter(maintenance.horimeter || '');
     } else {
         resetForm();
     }
@@ -148,7 +153,6 @@ export default function MachineMaintenancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const machineId = params.machineId as string;
     if (!user || !maintType || !maintDate) {
         toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Tipo e data são obrigatórios.'});
         return;
@@ -162,6 +166,10 @@ export default function MachineMaintenancePage() {
             description: maintDescription,
             cost: Number(maintCost) || 0,
         };
+
+        if (machine?.type === 'Trator' && maintHorimeter) {
+            maintData.horimeter = Number(maintHorimeter);
+        }
 
         if (isEditing && editingMaintenance) {
             const maintDocRef = doc(firestore, `machinery/${machineId}/maintenances`, editingMaintenance.id);
@@ -191,7 +199,6 @@ export default function MachineMaintenancePage() {
   }
 
   const handleDeleteMaintenance = async (maintId: string | null) => {
-    const machineId = params.machineId as string;
     if (!maintId || !machineId) return;
 
     try {
@@ -284,15 +291,29 @@ export default function MachineMaintenancePage() {
                             <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={maintDate} onSelect={setMaintDate} initialFocus /></PopoverContent>
                         </Popover>
                       </div>
-                      <div>
-                        <Label htmlFor="cost">Custo (R$)</Label>
-                        <Input 
-                            id="cost" 
-                            type="number"
-                            value={maintCost}
-                            onChange={(e) => setMaintCost(e.target.value === '' ? '' : Number(e.target.value))}
-                            placeholder="0,00"
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                         <div>
+                            <Label htmlFor="cost">Custo (R$)</Label>
+                            <Input 
+                                id="cost" 
+                                type="number"
+                                value={maintCost}
+                                onChange={(e) => setMaintCost(e.target.value === '' ? '' : Number(e.target.value))}
+                                placeholder="0,00"
+                            />
+                        </div>
+                        {machine.type === 'Trator' && (
+                            <div>
+                                <Label htmlFor="horimeter">Horas (hs)</Label>
+                                <Input 
+                                    id="horimeter" 
+                                    type="number"
+                                    value={maintHorimeter}
+                                    onChange={(e) => setMaintHorimeter(e.target.value === '' ? '' : Number(e.target.value))}
+                                    placeholder="Horímetro"
+                                />
+                            </div>
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="description">Descrição do Serviço</Label>
@@ -332,10 +353,18 @@ export default function MachineMaintenancePage() {
                                             {format(maint.date.toDate(), "dd 'de' MMM, yyyy", { locale: ptBR })}
                                         </p>
                                     </div>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 items-center mt-2">
+                                        <p className="text-sm font-semibold">Custo: {maint.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                        {maint.horimeter && (
+                                            <div className="flex items-center gap-1 text-sm font-semibold">
+                                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                                <span>{maint.horimeter} hs</span>
+                                            </div>
+                                        )}
+                                    </div>
                                     {maint.description && (
-                                        <p className="text-muted-foreground text-sm mt-1 whitespace-pre-wrap">{maint.description}</p>
+                                        <p className="text-muted-foreground text-sm mt-2 whitespace-pre-wrap">{maint.description}</p>
                                     )}
-                                     <p className="text-sm font-semibold mt-2">Custo: {maint.cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                 </div>
                             </div>
                             <div className="ml-2">
