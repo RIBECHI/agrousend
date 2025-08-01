@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescri
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Pencil, Tractor, Wrench, Info } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Pencil, Tractor, Wrench, Info, Image as ImageIcon, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import Image from 'next/image';
+
 
 interface Machine {
   id: string;
@@ -33,9 +35,17 @@ interface Machine {
   model: string;
   year: number;
   userId: string;
+  imageUrl?: string;
 }
 
 const machineTypes = ['Trator', 'Colheitadeira', 'Pulverizador', 'Plantadeira', 'Implemento', 'Veículo', 'Outro'];
+
+const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+});
 
 export default function MachineryPage() {
   const { user } = useAuth();
@@ -56,6 +66,8 @@ export default function MachineryPage() {
   const [model, setModel] = useState('');
   const [year, setYear] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   // Dialog state
   const [machineToDelete, setMachineToDelete] = useState<string | null>(null);
@@ -88,6 +100,11 @@ export default function MachineryPage() {
 
     return () => unsubscribe();
   }, [user, toast]);
+  
+  const removeImage = useCallback(() => {
+    setImageFile(null);
+    setImagePreview(null);
+  }, []);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -97,7 +114,8 @@ export default function MachineryPage() {
     setYear('');
     setEditingMachine(null);
     setIsSubmitting(false);
-  }, []);
+    removeImage();
+  }, [removeImage]);
 
   useEffect(() => {
     if (isSheetOpen) {
@@ -107,6 +125,7 @@ export default function MachineryPage() {
             setBrand(editingMachine.brand);
             setModel(editingMachine.model);
             setYear(editingMachine.year);
+            setImagePreview(editingMachine.imageUrl || null);
         } else {
             resetForm();
         }
@@ -122,6 +141,84 @@ export default function MachineryPage() {
     setSelectedMachine(machine);
     setIsDetailSheetOpen(true);
   };
+  
+    const compressImage = async (file: File, quality = 0.6, maxSizeMB = 0.5): Promise<File> => {
+        const maxSize = maxSizeMB * 1024 * 1024;
+        if (file.size <= maxSize && file.type === 'image/jpeg') {
+            return file;
+        }
+
+        return new Promise((resolve, reject) => {
+            const image = new window.Image();
+            image.src = URL.createObjectURL(file);
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                if (!ctx) {
+                    return reject(new Error('Não foi possível obter o contexto do canvas.'));
+                }
+
+                let { width, height } = image;
+                const MAX_WIDTH_HEIGHT = 1024; // Reduzido para imagens de equipamento
+                if (width > height) {
+                    if (width > MAX_WIDTH_HEIGHT) {
+                        height *= MAX_WIDTH_HEIGHT / width;
+                        width = MAX_WIDTH_HEIGHT;
+                    }
+                } else {
+                    if (height > MAX_WIDTH_HEIGHT) {
+                        width *= MAX_WIDTH_HEIGHT / height;
+                        height = MAX_WIDTH_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(image, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            if (blob.size > maxSize) {
+                                return reject(new Error("A imagem ainda é muito grande após a compressão."));
+                            }
+                            const newFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now(),
+                            });
+                            resolve(newFile);
+                        } else {
+                            reject(new Error('Falha ao criar o blob da imagem.'));
+                        }
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            };
+            image.onerror = reject;
+        });
+    };
+    
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            try {
+                const compressedFile = await compressImage(file);
+                setImageFile(compressedFile);
+                const previewUrl = URL.createObjectURL(compressedFile);
+                setImagePreview(previewUrl);
+            } catch (error: any) {
+                toast({
+                    variant: "destructive",
+                    title: "Erro ao processar imagem",
+                    description: error.message || "Não foi possível comprimir a imagem.",
+                });
+                removeImage();
+            }
+        }
+    };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +229,7 @@ export default function MachineryPage() {
 
     setIsSubmitting(true);
     try {
-        const machineData = {
+        const machineData: any = {
             userId: user.uid,
             name,
             type,
@@ -140,6 +237,13 @@ export default function MachineryPage() {
             model,
             year: Number(year),
         };
+        
+        if (imageFile) {
+            machineData.imageUrl = await toBase64(imageFile);
+        } else if (isEditing && !imagePreview) {
+            // Se a imagem foi removida na edição
+            machineData.imageUrl = null;
+        }
 
         if(isEditing && editingMachine) {
             const docRef = doc(firestore, 'machinery', editingMachine.id);
@@ -221,8 +325,14 @@ export default function MachineryPage() {
                         <li key={machine.id} className="py-3 px-2 rounded-lg hover:bg-muted/50 cursor-pointer" onClick={() => handleViewDetails(machine)}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="bg-primary/10 text-primary p-3 rounded-full">
-                                        <Tractor />
+                                     <div className="relative flex-shrink-0 w-16 h-16 rounded-md bg-muted overflow-hidden">
+                                        <Image 
+                                            src={machine.imageUrl || 'https://placehold.co/100x100.png'}
+                                            alt={machine.name}
+                                            fill
+                                            className="object-cover"
+                                            data-ai-hint="tractor agriculture machinery"
+                                        />
                                     </div>
                                     <div>
                                         <p className="font-semibold">{machine.name}</p>
@@ -259,6 +369,32 @@ export default function MachineryPage() {
                 </SheetDescription>
               </SheetHeader>
               <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
+                   <div>
+                        <Label>Foto do Equipamento</Label>
+                        {imagePreview ? (
+                            <div className="relative mt-2">
+                                <Image src={imagePreview} alt="Preview do equipamento" width={200} height={100} className="rounded-md object-cover w-full aspect-video" />
+                                <Button variant="destructive" size="icon" onClick={removeImage} className="absolute top-2 right-2 h-7 w-7">
+                                    <X className="h-4 w-4"/>
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 dark:border-gray-100/25">
+                                <div className="text-center">
+                                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                                    <div className="mt-4 flex text-sm leading-6 text-gray-600">
+                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-primary-dark dark:bg-transparent">
+                                        <span>Selecione uma imagem</span>
+                                        <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleImageChange} accept="image/*" />
+                                    </label>
+                                    <p className="pl-1 dark:text-gray-400">ou arraste e solte</p>
+                                    </div>
+                                    <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG até 500KB</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                   <div>
                     <Label htmlFor="name">Nome / Apelido</Label>
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ex: Tratorzão Amarelo" />
@@ -309,6 +445,11 @@ export default function MachineryPage() {
                 </SheetHeader>
                  {selectedMachine && (
                     <div className="py-6 flex flex-col gap-4">
+                        {selectedMachine.imageUrl && (
+                             <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                                <Image src={selectedMachine.imageUrl} alt={selectedMachine.name} fill className="object-cover" />
+                             </div>
+                        )}
                         <Separator />
                         <div className="flex justify-between items-center">
                             <Label>Tipo</Label>
@@ -359,3 +500,5 @@ export default function MachineryPage() {
     </>
   );
 }
+
+    
