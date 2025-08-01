@@ -99,7 +99,9 @@ export default function PlotOperationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { harvestId, plotId } = useParams<{ harvestId: string; plotId: string; }>();
+  const params = useParams();
+  const harvestId = params.harvestId as string;
+  const plotId = params.plotId as string;
 
   const [plot, setPlot] = useState<FarmPlot | null>(null);
   const [harvest, setHarvest] = useState<Harvest | null>(null);

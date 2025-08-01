@@ -41,7 +41,8 @@ interface HarvestPlot {
 export default function ManageHarvestPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const { id: harvestId } = useParams() as { id: string };
+  const params = useParams();
+  const harvestId = params.id as string;
   const { toast } = useToast();
 
   const [harvest, setHarvest] = useState<Harvest | null>(null);
