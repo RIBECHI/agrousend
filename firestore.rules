@@ -3,94 +3,117 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    function isUserAuthenticated() {
-      return request.auth != null;
-    }
     
-    function isOwner(resourceId) {
-      return request.auth.uid == resourceId;
-    }
-    
-    function isOwnerOfDoc(docName) {
-      return request.auth.uid == get(/databases/$(database)/documents/$(docName)).data.userId;
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
+    // Users collection: Allow users to read their own data and admins to read anyone's data.
+    // Users can update their own data, but not change their role unless they are an admin.
     match /users/{userId} {
-      allow read, write: if isUserAuthenticated() && isOwner(userId);
+      allow read: if isOwner(userId) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if request.resource.data.uid == request.auth.uid;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
-    
+
+    // Posts, comments and likes
     match /posts/{postId} {
-        allow read: if isUserAuthenticated();
-        allow create: if isUserAuthenticated() && isOwner(request.resource.data.authorId);
-        allow update, delete: if isUserAuthenticated() && isOwnerOfDoc('posts/' + postId);
-        
-        match /comments/{commentId} {
-            allow read: if isUserAuthenticated();
-            allow create: if isUserAuthenticated() && isOwner(request.resource.data.authorId);
-            allow update, delete: if isUserAuthenticated() && isOwnerOfDoc('posts/' + postId + '/comments/' + commentId);
-        }
-    }
+      allow read: if request.auth != null;
+      allow create: if isOwner(request.resource.data.authorId);
+      allow update, delete: if isOwner(resource.data.authorId);
 
-    match /chats/{chatId}/messages/{messageId} {
-      allow read, write: if isUserAuthenticated() && (request.auth.uid in chatId.split('_'));
-    }
-
-    match /events/{eventId} {
-        allow read: if isUserAuthenticated();
-        allow create: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-        allow delete: if isUserAuthenticated() && isOwnerOfDoc('events/' + eventId);
-    }
-
-    match /farmPlots/{plotId} {
-        allow read, create, delete: if isUserAuthenticated() && isOwner(request.auth.uid);
-    }
-
-    match /harvests/{harvestId} {
-        allow read, create, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-        allow update: if isUserAuthenticated() && isOwnerOfDoc('harvests/' + harvestId);
-
-        match /harvestPlots/{harvestPlotId} {
-           allow read, create, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-           allow update: if isUserAuthenticated() && isOwnerOfDoc('harvests/' + harvestId + '/harvestPlots/' + harvestPlotId);
-
-            match /operations/{operationId} {
-                allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-            }
-        }
-    }
-    
-     match /items/{itemId} {
-        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-    }
-
-    match /inventoryLogs/{logId} {
-       allow read, create: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-    }
-    
-    match /machinery/{machineId} {
-        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-        
-        match /maintenances/{maintenanceId} {
-           allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-        }
-    }
-    
-    match /listings/{listingId} {
-      allow read: if isUserAuthenticated();
-      allow create, update, delete: if isUserAuthenticated() && isOwnerOfDoc('listings/' + listingId);
-    }
-
-    match /livestockLots/{lotId} {
-      allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
-      
-      match /animals/{animalId} {
-        allow read, create, update, delete: if isUserAuthenticated() && isOwner(request.resource.data.userId);
+      match /comments/{commentId} {
+        allow read, create: if request.auth != null;
+        allow update, delete: if isOwner(resource.data.authorId);
       }
     }
     
-    match /{document=**} {
-      allow read, write: if false;
+    // Events
+    match /events/{eventId} {
+        allow read: if request.auth != null;
+        allow create: if isOwner(request.resource.data.userId);
+        allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // Farm Plots
+    match /farmPlots/{plotId} {
+        allow read, create: if isOwner(request.resource.data.userId);
+        allow delete: if isOwner(resource.data.userId);
+        // No updates for now, user must delete and re-create.
+    }
+    
+     // Harvests and their subcollections
+    match /harvests/{harvestId} {
+        allow read, create: if isOwner(request.resource.data.userId);
+        allow delete: if isOwner(resource.data.userId);
+        
+        match /harvestPlots/{harvestPlotId} {
+            // Allow users to manage plots within their own harvests.
+            allow read, create: if get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
+            allow delete: if isOwner(resource.data.userId);
+
+            match /operations/{operationId} {
+               allow read, create: if get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
+               allow update, delete: if isOwner(resource.data.userId);
+            }
+        }
+    }
+
+    // Items and inventory
+    match /items/{itemId} {
+        allow read, create, update: if isOwner(request.resource.data.userId);
+        allow delete: if isOwner(resource.data.userId);
+    }
+
+    match /inventoryLogs/{logId} {
+        allow read, create: if isOwner(request.resource.data.userId);
+        // Logs are immutable
+        allow update, delete: if false;
+    }
+
+     // Machinery and its subcollections
+    match /machinery/{machineId} {
+      allow read, create, update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
+      
+      match /maintenances/{maintId} {
+        allow read, create, update, delete: if get(/databases/$(database)/documents/machinery/$(machineId)).data.userId == request.auth.uid;
+      }
+    }
+    
+    // Chat messages
+    match /chats/{chatId}/messages/{messageId} {
+      allow read, create: if request.auth.uid in chatId.split('_');
+    }
+
+    // Forum Topics and replies
+    match /forumTopics/{topicId} {
+        allow read, create: if request.auth != null;
+        allow update, delete: if isOwner(resource.data.authorId);
+
+        match /replies/{replyId} {
+            allow read, create: if request.auth != null;
+            allow delete: if isOwner(resource.data.authorId);
+        }
+    }
+
+    // Marketplace Listings
+    match /listings/{listingId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isOwner(resource.data.userId);
+    }
+
+    // Livestock Lots and animals
+    match /livestockLots/{lotId} {
+      allow read, create, update: if isOwner(request.resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
+
+      match /animals/{animalId} {
+        // Allow users to manage animals only within their own lots
+        allow read, create, update, delete: if get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId == request.auth.uid;
+      }
     }
   }
 }
