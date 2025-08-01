@@ -190,7 +190,7 @@ export default function FarmsPage() {
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 flex flex-col space-y-6">
+        <div className="lg:col-span-2">
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -198,51 +198,15 @@ export default function FarmsPage() {
                         <CardDescription>Visualize e clique nos seus talhões no mapa.</CardDescription>
                     </div>
                 </CardHeader>
-                <CardContent className="h-[400px] w-full p-0">
+                <CardContent className="h-[600px] w-full p-0">
                      <Suspense fallback={<Skeleton className="h-full w-full" />}>
                         <LeafletMapDisplay plots={plots} onPlotClick={handleViewDetails} />
                     </Suspense>
                 </CardContent>
              </Card>
-             <Card>
-                 <CardHeader>
-                    <CardTitle>Lista de Talhões</CardTitle>
-                     <CardDescription>
-                        Total de {plots.length} talhões cadastrados, somando {totalArea.toFixed(2)} hectares.
-                    </CardDescription>
-                 </CardHeader>
-                 <CardContent>
-                    {isLoading ? (
-                        <div className="text-center text-muted-foreground py-8">
-                            <Loader className="mx-auto h-8 w-8 animate-spin" />
-                            <p>Carregando...</p>
-                        </div>
-                    ) : plots.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">Nenhum talhão cadastrado.</p>
-                    ) : (
-                       <ul className="space-y-2">
-                            {plots.map(plot => (
-                                <li key={plot.id}>
-                                    <div 
-                                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left cursor-pointer"
-                                        onClick={() => handleViewDetails(plot)}
-                                    >
-                                        <div>
-                                            <p className="font-semibold">{plot.name}</p>
-                                            <p className="text-sm text-muted-foreground">{plot.culture} - {plot.area.toFixed(2)} ha</p>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={(e) => { e.stopPropagation(); openDeleteDialog(plot.id); }}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                 </CardContent>
-             </Card>
         </div>
-        <div className="lg:col-span-1">
+
+        <div className="lg:col-span-1 flex flex-col space-y-6">
              <Sheet open={isSheetOpen} onOpenChange={(open) => {
                 if(!open) resetForm();
                 setIsSheetOpen(open);
@@ -301,6 +265,44 @@ export default function FarmsPage() {
                     </form>
                 </SheetContent>
             </Sheet>
+
+            <Card>
+                 <CardHeader>
+                    <CardTitle>Lista de Talhões</CardTitle>
+                     <CardDescription>
+                        Total de {plots.length} talhões cadastrados, somando {totalArea.toFixed(2)} hectares.
+                    </CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                    {isLoading ? (
+                        <div className="text-center text-muted-foreground py-8">
+                            <Loader className="mx-auto h-8 w-8 animate-spin" />
+                            <p>Carregando...</p>
+                        </div>
+                    ) : plots.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">Nenhum talhão cadastrado.</p>
+                    ) : (
+                       <ul className="space-y-2">
+                            {plots.map(plot => (
+                                <li key={plot.id}>
+                                    <div 
+                                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left cursor-pointer"
+                                        onClick={() => handleViewDetails(plot)}
+                                    >
+                                        <div>
+                                            <p className="font-semibold">{plot.name}</p>
+                                            <p className="text-sm text-muted-foreground">{plot.culture} - {plot.area.toFixed(2)} ha</p>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={(e) => { e.stopPropagation(); openDeleteDialog(plot.id); }}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                 </CardContent>
+             </Card>
         </div>
       </div>
       
