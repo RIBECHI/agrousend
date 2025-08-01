@@ -4,14 +4,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, serverTimestamp, orderBy, where, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, PlusCircle, Trash2, Beef, Users } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Beef, Users, MapPin, Move } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +24,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface LivestockLot {
   id: string;
   name: string;
   description?: string;
   animalCount?: number;
+  currentPlotId?: string;
+  currentPlotName?: string;
   userId: string;
   createdAt: Timestamp;
+}
+
+interface FarmPlot {
+  id: string;
+  name: string;
 }
 
 export default function LivestockPage() {
@@ -39,16 +47,24 @@ export default function LivestockPage() {
   const { toast } = useToast();
 
   const [lots, setLots] = useState<LivestockLot[]>([]);
+  const [plots, setPlots] = useState<FarmPlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
   
-  // Form state
+  // Create Lot Sheet
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Delete Lot Dialog
   const [lotToDelete, setLotToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  // Move Lot Sheet
+  const [isMoveSheetOpen, setIsMoveSheetOpen] = useState(false);
+  const [lotToMove, setLotToMove] = useState<LivestockLot | null>(null);
+  const [destinationPlotId, setDestinationPlotId] = useState('');
+  const [isMoving, setIsMoving] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -57,30 +73,32 @@ export default function LivestockPage() {
     }
 
     const lotsCollection = collection(firestore, 'livestockLots');
-    const q = query(lotsCollection, where('userId', '==', user.uid));
+    const qLots = query(lotsCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeLots = onSnapshot(qLots, (snapshot) => {
       let fetchedLots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LivestockLot));
-      // Ordenando os dados no lado do cliente para evitar a necessidade de um índice composto
-      fetchedLots.sort((a, b) => {
-        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-        return dateB - dateA;
-      });
+      fetchedLots.sort((a, b) => (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0) - (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0));
       setLots(fetchedLots);
       setIsLoading(false);
     }, (error) => {
       console.error("Erro ao buscar lotes: ", error);
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar lotes.",
-        description: "Verifique as regras do Firestore para permitir a leitura da coleção 'livestockLots'.",
-      });
+      toast({ variant: "destructive", title: "Erro ao carregar lotes." });
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    const plotsCollection = collection(firestore, 'farmPlots');
+    const qPlots = query(plotsCollection, where('userId', '==', user.uid));
+    const unsubscribePlots = onSnapshot(qPlots, (snapshot) => {
+        const fetchedPlots = snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name } as FarmPlot));
+        setPlots(fetchedPlots);
+    });
+
+
+    return () => {
+      unsubscribeLots();
+      unsubscribePlots();
+    }
   }, [user, toast]);
 
 
@@ -140,6 +158,37 @@ export default function LivestockPage() {
     }
   };
 
+  const handleOpenMoveSheet = (lot: LivestockLot) => {
+    setLotToMove(lot);
+    setDestinationPlotId(lot.currentPlotId || '');
+    setIsMoveSheetOpen(true);
+  };
+
+  const handleMoveLot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lotToMove) return;
+
+    setIsMoving(true);
+    try {
+        const lotDocRef = doc(firestore, 'livestockLots', lotToMove.id);
+        const selectedPlot = plots.find(p => p.id === destinationPlotId);
+        
+        await updateDoc(lotDocRef, {
+            currentPlotId: destinationPlotId || null,
+            currentPlotName: selectedPlot?.name || null
+        });
+        
+        toast({ title: 'Lote movido com sucesso!' });
+        setIsMoveSheetOpen(false);
+        setLotToMove(null);
+
+    } catch (error) {
+        console.error("Erro ao mover lote: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao mover lote.' });
+    } finally {
+        setIsMoving(false);
+    }
+  };
 
   return (
     <>
@@ -216,28 +265,40 @@ export default function LivestockPage() {
                             <span className="sr-only">Excluir</span>
                         </Button>
                     </div>
-                    <CardDescription className="flex items-center gap-2 pt-2">
-                        <Users className="h-4 w-4" />
-                        {lot.animalCount || 0} animais no lote
-                    </CardDescription>
+                    <div className="space-y-2 pt-2">
+                        <CardDescription className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            {lot.animalCount || 0} animais no lote
+                        </CardDescription>
+                        <CardDescription className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            {lot.currentPlotName || 'Sem localização'}
+                        </CardDescription>
+                    </div>
                 </CardHeader>
                 <CardContent className="flex-grow">
                     <p className="text-sm text-muted-foreground line-clamp-3 h-[60px]">
                         {lot.description || 'Nenhuma descrição para este lote.'}
                     </p>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="grid grid-cols-2 gap-2">
                     <Button asChild variant="outline" className="w-full">
                         <Link href={`/livestock/${lot.id}`}>
                             Gerenciar Lote
                         </Link>
+                    </Button>
+                    <Button onClick={() => handleOpenMoveSheet(lot)} className="w-full">
+                        <Move className="mr-2 h-4 w-4" />
+                        Alocar / Mover
                     </Button>
                 </CardFooter>
             </Card>
           ))}
         </div>
       )}
-        <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+
+      {/* Delete Lot Dialog */}
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -252,7 +313,45 @@ export default function LivestockPage() {
                 </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
-        </AlertDialog>
+      </AlertDialog>
+
+      {/* Move Lot Sheet */}
+      <Sheet open={isMoveSheetOpen} onOpenChange={(open) => { if(!open) setLotToMove(null); setIsMoveSheetOpen(open); }}>
+          <SheetContent className="w-full sm:max-w-md">
+            <form onSubmit={handleMoveLot} className="flex flex-col h-full">
+              <SheetHeader>
+                <SheetTitle>Alocar / Mover Lote</SheetTitle>
+                <SheetDescription>
+                  Selecione o pasto (talhão) de destino para o lote "{lotToMove?.name}".
+                </SheetDescription>
+              </SheetHeader>
+              <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
+                  <div>
+                    <Label htmlFor="destination-plot">Pasto de Destino</Label>
+                    <Select value={destinationPlotId} onValueChange={setDestinationPlotId}>
+                        <SelectTrigger id="destination-plot">
+                            <SelectValue placeholder="Selecione um pasto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="">Nenhum (Remover do pasto)</SelectItem>
+                            {plots.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                  </div>
+              </div>
+              <SheetFooter className="pt-4 mt-auto">
+                <SheetClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </SheetClose>
+                <Button type="submit" disabled={isMoving}>
+                  {isMoving ? <><Loader className="mr-2 animate-spin" /> Movendo...</> : 'Salvar Localização'}
+                </Button>
+              </SheetFooter>
+            </form>
+          </SheetContent>
+        </Sheet>
     </>
   );
 }
