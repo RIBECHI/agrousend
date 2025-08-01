@@ -25,6 +25,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import Image from 'next/image';
+import Link from 'next/link';
 
 
 interface Machine {
@@ -444,7 +445,7 @@ export default function MachineryPage() {
                     <SheetDescription>Detalhes do equipamento selecionado.</SheetDescription>
                 </SheetHeader>
                  {selectedMachine && (
-                    <div className="py-6 flex flex-col gap-4">
+                    <div className="py-6 flex flex-col gap-4 h-full">
                         {selectedMachine.imageUrl && (
                              <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
                                 <Image src={selectedMachine.imageUrl} alt={selectedMachine.name} fill className="object-cover" />
@@ -471,9 +472,16 @@ export default function MachineryPage() {
                             <p className="font-medium">{selectedMachine.year}</p>
                         </div>
                          <Separator />
+                         <div className="flex-grow"></div>
+                         <Button asChild>
+                            <Link href={`/machinery/${selectedMachine.id}/maintenance`}>
+                                <Wrench className="mr-2 h-4 w-4" />
+                                Gerenciar Manutenções
+                            </Link>
+                         </Button>
                     </div>
                 )}
-                <SheetFooter>
+                <SheetFooter className="mt-auto">
                     <SheetClose asChild>
                         <Button variant="outline">Fechar</Button>
                     </SheetClose>
@@ -486,7 +494,7 @@ export default function MachineryPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. Isso excluirá permanentemente os dados da máquina.
+                    Esta ação não pode ser desfeita. Isso excluirá permanentemente os dados da máquina e todo o seu histórico de manutenção.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -500,5 +508,3 @@ export default function MachineryPage() {
     </>
   );
 }
-
-    
