@@ -24,12 +24,22 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface Machine {
+  id: string;
+  name: string;
+}
+
 interface Item {
   id: string;
   name: string;
   category: string;
   unit: string;
   userId: string;
+  // Campos específicos para peças
+  partCode?: string;
+  partType?: string;
+  appliesToMachineId?: string;
+  appliesToMachineName?: string;
 }
 
 const categories = ['Sementes', 'Fertilizantes', 'Defensivos', 'Combustível', 'Peças', 'Adjuvantes', 'Outros'];
@@ -40,6 +50,7 @@ export default function ItemsPage() {
   const { toast } = useToast();
 
   const [items, setItems] = useState<Item[]>([]);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Sheet state
@@ -51,12 +62,16 @@ export default function ItemsPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [unit, setUnit] = useState('');
+  const [partCode, setPartCode] = useState('');
+  const [partType, setPartType] = useState('');
+  const [appliesToMachineId, setAppliesToMachineId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Dialog state
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
+  // Fetch items
   useEffect(() => {
     if (!user) {
       setIsLoading(false);
@@ -80,11 +95,26 @@ export default function ItemsPage() {
 
     return () => unsubscribe();
   }, [user, toast]);
+  
+  // Fetch machinery for the selector
+  useEffect(() => {
+    if (!user) return;
+    const machineryCollection = collection(firestore, 'machinery');
+    const q = query(machineryCollection, where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedMachines = snapshot.docs.map(doc => ({id: doc.id, name: doc.data().name} as Machine));
+        setMachines(fetchedMachines);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const resetForm = useCallback(() => {
     setName('');
     setCategory('');
     setUnit('');
+    setPartCode('');
+    setPartType('');
+    setAppliesToMachineId('');
     setEditingItem(null);
     setIsSubmitting(false);
   }, []);
@@ -95,6 +125,9 @@ export default function ItemsPage() {
             setName(editingItem.name);
             setCategory(editingItem.category);
             setUnit(editingItem.unit);
+            setPartCode(editingItem.partCode || '');
+            setPartType(editingItem.partType || '');
+            setAppliesToMachineId(editingItem.appliesToMachineId || '');
         } else {
             resetForm();
         }
@@ -109,18 +142,36 @@ export default function ItemsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !name || !category || !unit) {
-      toast({ variant: "destructive", title: "Todos os campos são obrigatórios." });
+      toast({ variant: "destructive", title: "Todos os campos básicos são obrigatórios." });
+      return;
+    }
+     if (category === 'Peças' && (!partCode || !partType || !appliesToMachineId)) {
+      toast({ variant: "destructive", title: "Campos de Peça obrigatórios.", description: "Código, tipo e máquina de aplicação são necessários." });
       return;
     }
 
     setIsSubmitting(true);
     try {
-        const itemData: any = {
-            userId: user.uid,
+        const itemData: Omit<Item, 'id' | 'userId'> & { userId: string, createdAt?: any, currentStock?: number } = {
             name,
             category,
             unit,
+            userId: user.uid,
         };
+
+        if(category === 'Peças') {
+            const machine = machines.find(m => m.id === appliesToMachineId);
+            itemData.partCode = partCode;
+            itemData.partType = partType;
+            itemData.appliesToMachineId = appliesToMachineId;
+            itemData.appliesToMachineName = machine?.name || 'Desconhecida';
+        } else {
+            itemData.partCode = undefined;
+            itemData.partType = undefined;
+            itemData.appliesToMachineId = undefined;
+            itemData.appliesToMachineName = undefined;
+        }
+
 
         if(isEditing && editingItem) {
             const docRef = doc(firestore, 'items', editingItem.id);
@@ -209,6 +260,11 @@ export default function ItemsPage() {
                                 <div>
                                     <p className="font-semibold">{item.name}</p>
                                     <p className="text-sm text-muted-foreground">{item.category} - Unidade: {item.unit}</p>
+                                    {item.category === 'Peças' && item.appliesToMachineName && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Aplicação: {item.appliesToMachineName}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             <div className='flex gap-2'>
@@ -243,28 +299,59 @@ export default function ItemsPage() {
                     <Label htmlFor="name">Nome do Item</Label>
                     <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ex: Semente de Milho XPTO" />
                   </div>
-                  <div>
-                    <Label>Categoria</Label>
-                    <Select value={category} onValueChange={setCategory} required>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label>Categoria</Label>
+                        <Select value={category} onValueChange={setCategory} required>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label>Unidade de Medida</Label>
+                        <Select value={unit} onValueChange={setUnit} required>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Unidade de Medida</Label>
-                    <Select value={unit} onValueChange={setUnit} required>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma unidade" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                  </div>
+
+                  {category === 'Peças' && (
+                    <div className="space-y-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-foreground">Detalhes da Peça</p>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="partCode">Código da Peça</Label>
+                                <Input id="partCode" value={partCode} onChange={(e) => setPartCode(e.target.value)} required placeholder="Ex: AH202-B" />
+                            </div>
+                             <div>
+                                <Label htmlFor="partType">Tipo de Peça</Label>
+                                <Input id="partType" value={partType} onChange={(e) => setPartType(e.target.value)} required placeholder="Ex: Filtro de ar" />
+                            </div>
+                        </div>
+                        <div>
+                            <Label>Aplica-se à Máquina</Label>
+                            <Select value={appliesToMachineId} onValueChange={setAppliesToMachineId} required>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione a máquina" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {machines.length === 0 && <p className="p-2 text-xs text-muted-foreground">Nenhuma máquina cadastrada.</p>}
+                                    {machines.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                  )}
+
               </div>
               <SheetFooter className="pt-4 mt-auto">
                 <SheetClose asChild>
@@ -297,3 +384,5 @@ export default function ItemsPage() {
     </>
   );
 }
+
+    
