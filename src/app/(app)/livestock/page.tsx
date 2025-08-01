@@ -57,11 +57,17 @@ export default function LivestockPage() {
     }
 
     const lotsCollection = collection(firestore, 'livestockLots');
-    const q = query(lotsCollection, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const q = query(lotsCollection, where('userId', '==', user.uid));
     
     setIsLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let fetchedLots = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LivestockLot));
+      // Ordenando os dados no lado do cliente para evitar a necessidade de um índice composto
+      fetchedLots.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
+      });
       setLots(fetchedLots);
       setIsLoading(false);
     }, (error) => {
