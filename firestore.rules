@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,30 +5,37 @@ service cloud.firestore {
 
     // Regra para a coleção 'users'
     match /users/{userId} {
-      // Qualquer usuário autenticado pode criar seu próprio perfil
-      allow create: if request.auth != null && request.auth.uid == userId;
-      // Qualquer usuário autenticado pode ler qualquer perfil (para perfis públicos)
-      allow read: if request.auth != null;
-      // O usuário só pode atualizar seu próprio perfil
-      allow update: if request.auth != null && request.auth.uid == userId;
-      // O usuário só pode deletar seu próprio perfil
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      // Qualquer usuário pode criar seu próprio documento de usuário
+      allow create: if request.auth.uid == userId;
+      // Usuários autenticados podem ler perfis públicos, exceto o campo fcmTokens
+      allow read: if request.auth != null && !('fcmTokens' in resource.data);
+      // O usuário pode atualizar seu próprio perfil
+      allow update: if request.auth.uid == userId;
+      // O usuário pode deletar seu próprio perfil
+      allow delete: if request.auth.uid == userId;
     }
 
-    // Regra para a coleção 'posts' (feed) e subcoleções
+    // Regra para a coleção 'posts' e subcoleções
     match /posts/{postId} {
-      // Qualquer usuário autenticado pode ler
+      // Qualquer usuário autenticado pode ler os posts
       allow read: if request.auth != null;
-      // O usuário só pode criar, atualizar e deletar seus próprios posts
-      allow write: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      // O usuário pode criar um post se estiver logado
+      allow create: if request.auth.uid == request.resource.data.authorId;
+      // O usuário pode atualizar as curtidas (likes)
+      allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      // O usuário pode deletar seu próprio post
+      allow delete: if request.auth.uid == resource.data.authorId;
 
-      // Regra para a subcoleção de comentários
+      // Regras para a subcoleção 'comments'
       match /comments/{commentId} {
-        // Qualquer usuário autenticado pode ler e adicionar comentários
-        allow read, create: if request.auth != null;
-        // Apenas o autor do comentário ou o autor do post podem deletar
-        allow delete: if request.auth != null && 
-                      (request.resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/posts/$(postId)).data.authorId == request.auth.uid);
+        // Qualquer usuário autenticado pode ler os comentários
+        allow read: if request.auth != null;
+        // Qualquer usuário autenticado pode criar um comentário
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+        // O usuário só pode deletar seu próprio comentário
+        allow delete: if request.auth.uid == resource.data.authorId;
+        // Ninguém pode atualizar comentários
+        allow update: if false;
       }
     }
     
@@ -37,80 +43,109 @@ service cloud.firestore {
     match /events/{eventId} {
       // Qualquer usuário autenticado pode ler eventos
       allow read: if request.auth != null;
-      // O usuário só pode criar seus próprios eventos
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      // Apenas o criador do evento pode atualizar ou deletar
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/events/$(eventId)).data.userId == request.auth.uid;
+      // O usuário pode criar um evento se estiver logado
+      allow create: if request.auth.uid == request.resource.data.userId;
+      // O usuário pode deletar seu próprio evento
+      allow delete: if request.auth.uid == resource.data.userId;
+      // Ninguém pode atualizar eventos
+      allow update: if false;
     }
 
-    // Regra para a coleção 'farmPlots'
-    match /farmPlots/{plotId} {
-      // O usuário pode ler, criar, atualizar e deletar apenas seus próprios talhões
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    // Regra para a coleção 'chats' e subcoleções 'messages'
+    match /chats/{chatId} {
+        // Permitir leitura e escrita apenas se o ID do usuário estiver no ID do chat
+        allow read, write: if request.auth.uid in chatId.split('_');
+
+        match /messages/{messageId} {
+            // A regra do pai (chat) já cobre a permissão aqui
+             allow read, write: if request.auth.uid in chatId.split('_');
+        }
     }
-    
+
+    // Regra para a coleção 'farmPlots' (Talhões)
+    match /farmPlots/{plotId} {
+        // O usuário pode ler, criar, atualizar e deletar seus próprios talhões
+        allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
+    }
+
+    // Regra para a coleção 'forumTopics' e subcoleções
+    match /forumTopics/{topicId} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth.uid == request.resource.data.authorId;
+        allow delete: if request.auth.uid == resource.data.authorId;
+
+        match /replies/{replyId} {
+            allow read, create: if request.auth != null;
+            // Apenas o autor da resposta pode excluí-la
+            allow delete: if request.auth.uid == resource.data.authorId;
+            allow update: if false;
+        }
+    }
+
     // Regra para a coleção 'harvests' (Safras)
     match /harvests/{harvestId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+        // O usuário pode gerenciar (ler, criar, editar, deletar) suas próprias safras
+        allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
         
-        // Subcoleção de talhões dentro de uma safra
+        // Subcoleção de talhões dentro de cada safra
         match /harvestPlots/{harvestPlotId} {
-             allow read, write: if request.auth != null && get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
+             allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
 
-            // Subcoleção de operações dentro de um talhão de uma safra
-            match /operations/{operationId} {
-                allow read, write: if request.auth != null && get(/databases/$(database)/documents/harvests/$(harvestId)).data.userId == request.auth.uid;
-            }
+             // Subcoleção de operações dentro de cada talhão da safra
+             match /operations/{operationId} {
+                 allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
+             }
         }
     }
     
     // Regra para a coleção 'items' (Insumos)
     match /items/{itemId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
     }
 
     // Regra para a coleção 'inventoryLogs'
     match /inventoryLogs/{logId} {
-        allow read, create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+         allow read, create: if request.auth.uid == request.resource.data.userId;
+         // Não permitir update ou delete nos logs para manter o histórico
+         allow update, delete: if false;
     }
     
     // Regra para a coleção 'machinery'
     match /machinery/{machineId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-        
+        allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
+
         // Subcoleção de manutenções
         match /maintenances/{maintId} {
-             allow read, write: if request.auth != null && get(/databases/$(database)/documents/machinery/$(machineId)).data.userId == request.auth.uid;
+            allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
         }
     }
     
     // Regra para a coleção 'livestockLots' (Lotes de Gado)
     match /livestockLots/{lotId} {
-        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-
-        // Regra para a subcoleção de animais
+        allow read, write: if request.auth.uid == resource.data.userId || request.auth.uid == request.resource.data.userId;
+        
+        // Regras para a subcoleção 'animals'
         match /animals/{animalId} {
-            // Permite leitura se o usuário for dono do lote
-            allow read: if request.auth != null && get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId == request.auth.uid;
-            // Permite criação/atualização se o usuário for dono do lote
-            allow create, update: if request.auth != null && get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId == request.auth.uid;
-
-            // Regra mais complexa para exclusão, permitindo a movimentação
-            // Permite a exclusão se:
-            // 1. O usuário for o dono do lote (exclusão normal).
-            // 2. OU se a requisição for parte de uma transação de movimentação,
-            //    verificando se o usuário tem permissão para criar o mesmo animal no lote de destino.
-            allow delete: if request.auth != null && get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId == request.auth.uid;
+          // Permite leitura se o usuário for dono do lote
+          allow read: if request.auth.uid == get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId;
+          
+          // Permite criar um animal se o usuário for dono do lote
+          allow create: if request.auth.uid == get(/databases/$(database)/documents/livestockLots/$(lotId)).data.userId
+                          && request.auth.uid == request.resource.data.userId;
+                          
+          // Permite atualizar ou deletar se o usuário for dono do animal (documento)
+          allow update, delete: if request.auth.uid == resource.data.userId;
         }
     }
-    
-    // Regra para a coleção 'listings' (Marketplace)
-    match /listings/{listingId} {
-        // Qualquer usuário autenticado pode ler os anúncios
-        allow read: if request.auth != null;
-        // Um usuário só pode criar, editar ou apagar seus próprios anúncios
-        allow write: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
 
+    // Regra para a coleção 'listings' (Anúncios do Marketplace)
+    match /listings/{listingId} {
+      // Qualquer usuário autenticado pode ler os anúncios
+      allow read: if request.auth != null;
+      // O usuário pode criar um anúncio se estiver logado
+      allow create: if request.auth.uid == request.resource.data.userId;
+      // O usuário pode atualizar ou deletar seu próprio anúncio
+      allow update, delete: if request.auth.uid == resource.data.userId;
+    }
   }
 }
