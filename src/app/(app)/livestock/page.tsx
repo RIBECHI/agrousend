@@ -161,7 +161,7 @@ export default function LivestockPage() {
 
   const handleOpenMoveSheet = (lot: LivestockLot) => {
     setLotToMove(lot);
-    setDestinationPlotId(lot.currentPlotId || '');
+    setDestinationPlotId(lot.currentPlotId || 'none');
     setIsMoveSheetOpen(true);
   };
 
@@ -184,7 +184,7 @@ export default function LivestockPage() {
         // 1. Finaliza o registro de movimento anterior, se houver
         if (lotToMove.currentPlotId) {
             const historyCollectionRef = collection(lotDocRef, 'movementHistory');
-            const q = query(historyCollectionRef, where('exitDate', '==', null), orderBy('entryDate', 'desc'));
+            const q = query(historyCollectionRef, where('exitDate', '==', null));
             const oldMovementSnapshot = await getDocs(q);
 
             if (!oldMovementSnapshot.empty) {
