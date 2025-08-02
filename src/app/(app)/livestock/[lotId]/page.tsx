@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { firestore } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment, runTransaction, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, increment, runTransaction, orderBy, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -100,6 +100,8 @@ export default function LotDetailPage() {
     const [sex, setSex] = useState<'Macho' | 'Fêmea' | ''>('');
     const [breed, setBreed] = useState('');
     const [customBreed, setCustomBreed] = useState('');
+    const [quantity, setQuantity] = useState<number | ''>(1);
+
 
     // Dialog state
     const [animalToDelete, setAnimalToDelete] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export default function LotDetailPage() {
         if (!lotId) return;
 
         const animalsCollection = collection(firestore, 'livestockLots', lotId, 'animals');
-        const q = query(animalsCollection);
+        const q = query(animalsCollection, orderBy("identifier", "asc"));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedAnimals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Animal));
@@ -178,6 +180,7 @@ export default function LotDetailPage() {
         setSex('');
         setBreed('');
         setCustomBreed('');
+        setQuantity(1);
         setIsSubmitting(false);
         setEditingAnimal(null);
     }, []);
@@ -189,6 +192,7 @@ export default function LotDetailPage() {
             setEntryDate(animal.entryDate.toDate());
             setWeight(animal.weight);
             setSex(animal.sex);
+            setQuantity(1);
             if (races.includes(animal.breed)) {
                 setBreed(animal.breed);
                 setCustomBreed('');
@@ -205,33 +209,51 @@ export default function LotDetailPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const finalBreed = breed === 'Outra' ? customBreed : breed;
-        if (!user || !identifier || !entryDate || !weight || !sex || !finalBreed) {
-            toast({ variant: 'destructive', title: 'Todos os campos são obrigatórios.' });
+        const numQuantity = Number(quantity) || 1;
+
+        if (!user || !entryDate || !weight || !sex || !finalBreed || (numQuantity === 1 && !identifier.trim())) {
+            toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha todos os campos obrigatórios. A identificação é necessária para um único animal.' });
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const animalData = {
-                userId: user.uid,
-                identifier,
-                entryDate: Timestamp.fromDate(entryDate),
-                weight: Number(weight),
-                sex,
-                breed: finalBreed,
-            };
-
             const lotDocRef = doc(firestore, 'livestockLots', lotId);
-            const animalsCollection = collection(lotDocRef, 'animals');
-
+            
             if (isEditing && editingAnimal) {
-                const animalDocRef = doc(animalsCollection, editingAnimal.id);
+                const animalData = {
+                    identifier,
+                    entryDate: Timestamp.fromDate(entryDate),
+                    weight: Number(weight),
+                    sex,
+                    breed: finalBreed,
+                };
+                const animalDocRef = doc(lotDocRef, 'animals', editingAnimal.id);
                 await updateDoc(animalDocRef, animalData);
                 toast({ title: 'Sucesso!', description: 'Dados do animal atualizados.' });
             } else {
-                await addDoc(animalsCollection, { ...animalData, createdAt: serverTimestamp() });
-                await updateDoc(lotDocRef, { animalCount: increment(1) });
-                toast({ title: 'Sucesso!', description: 'Animal cadastrado no lote.' });
+                 const batch = writeBatch(firestore);
+                 const animalsCollection = collection(lotDocRef, 'animals');
+                 const baseIdentifier = identifier.trim() || finalBreed;
+
+                 for (let i = 0; i < numQuantity; i++) {
+                     const animalDocRef = doc(animalsCollection); // Auto-generate ID
+                     const finalIdentifier = numQuantity > 1 ? `${baseIdentifier} ${i + 1}` : baseIdentifier;
+                     const animalData = {
+                         userId: user.uid,
+                         identifier: finalIdentifier,
+                         entryDate: Timestamp.fromDate(entryDate),
+                         weight: Number(weight),
+                         sex,
+                         breed: finalBreed,
+                         createdAt: serverTimestamp()
+                     };
+                     batch.set(animalDocRef, animalData);
+                 }
+
+                batch.update(lotDocRef, { animalCount: increment(numQuantity) });
+                await batch.commit();
+                toast({ title: 'Sucesso!', description: `${numQuantity} animal(is) cadastrado(s) no lote.` });
             }
 
             resetForm();
@@ -362,13 +384,29 @@ export default function LotDetailPage() {
                             <SheetContent className="w-full sm:max-w-md">
                                 <form onSubmit={handleSubmit} className="flex flex-col h-full">
                                     <SheetHeader>
-                                        <SheetTitle>{isEditing ? 'Editar Animal' : 'Novo Animal'}</SheetTitle>
-                                        <SheetDescription>Preencha os dados do animal.</SheetDescription>
+                                        <SheetTitle>{isEditing ? 'Editar Animal' : 'Adicionar Animais ao Lote'}</SheetTitle>
+                                        <SheetDescription>Preencha os dados dos animais.</SheetDescription>
                                     </SheetHeader>
                                     <div className="space-y-4 py-6 flex-1 pr-6 overflow-y-auto">
+                                        
+                                        {!isEditing && (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label htmlFor="quantity">Quantidade</Label>
+                                                    <Input id="quantity" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))} required />
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         <div>
                                             <Label htmlFor="identifier">Identificação (Brinco/Nome)</Label>
-                                            <Input id="identifier" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required />
+                                            <Input 
+                                                id="identifier" 
+                                                value={identifier} 
+                                                onChange={(e) => setIdentifier(e.target.value)} 
+                                                required={Number(quantity) === 1}
+                                                placeholder={Number(quantity) > 1 ? "Opcional (será usado como prefixo)" : "Obrigatório para 1 animal"}
+                                            />
                                         </div>
                                         <div>
                                             <Label>Data de Entrada / Nascimento</Label>
@@ -417,7 +455,7 @@ export default function LotDetailPage() {
                                     <SheetFooter className="pt-4 mt-auto">
                                         <SheetClose asChild><Button type="button" variant="outline">Cancelar</Button></SheetClose>
                                         <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Adicionar Animal'}
+                                            {isSubmitting ? <><Loader className="mr-2 animate-spin" /> Salvando...</> : isEditing ? 'Salvar Alterações' : 'Adicionar'}
                                         </Button>
                                     </SheetFooter>
                                 </form>
