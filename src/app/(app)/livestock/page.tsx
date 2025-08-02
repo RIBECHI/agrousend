@@ -321,16 +321,18 @@ export default function LivestockPage() {
                         {lot.description || 'Nenhuma descrição para este lote.'}
                     </p>
                 </CardContent>
-                <CardFooter className="grid grid-cols-2 gap-2">
-                    <Button asChild variant="outline" className="w-full">
-                        <Link href={`/livestock/${lot.id}`}>
-                            Gerenciar Lote
-                        </Link>
-                    </Button>
-                    <Button onClick={() => handleOpenMoveSheet(lot)} className="w-full">
-                        <Move className="mr-2 h-4 w-4" />
-                        Alocar / Mover
-                    </Button>
+                <CardFooter>
+                    <div className="grid grid-cols-2 gap-2 w-full">
+                        <Button asChild variant="outline" className="w-full">
+                            <Link href={`/livestock/${lot.id}`}>
+                                Gerenciar Lote
+                            </Link>
+                        </Button>
+                        <Button onClick={() => handleOpenMoveSheet(lot)} className="w-full">
+                            <Move className="mr-2 h-4 w-4" />
+                            Alocar / Mover
+                        </Button>
+                    </div>
                 </CardFooter>
             </Card>
           ))}
